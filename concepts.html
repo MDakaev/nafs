@@ -852,10 +852,14 @@
       const now = new Date();
       if (period === "day") {
         const val = valuesForDate(now);
+        const meMorning = Math.floor(val.me * .3);
+        const meDay = Math.floor(val.me * .4);
+        const nafsMorning = Math.floor(val.nafs * .3);
+        const nafsDay = Math.floor(val.nafs * .4);
         const segments = [
-          { label:"утро", me:Math.ceil(val.me*.35), nafs:Math.ceil(val.nafs*.25) },
-          { label:"день", me:Math.floor(val.me*.4), nafs:Math.ceil(val.nafs*.5) },
-          { label:"вечер", me:Math.max(0,val.me-Math.ceil(val.me*.35)-Math.floor(val.me*.4)), nafs:Math.max(0,val.nafs-Math.ceil(val.nafs*.25)-Math.ceil(val.nafs*.5)) }
+          { label:"утро", me:meMorning, nafs:nafsMorning },
+          { label:"день", me:meDay, nafs:nafsDay },
+          { label:"вечер", me:val.me-meMorning-meDay, nafs:val.nafs-nafsMorning-nafsDay }
         ];
         return { title:"Сегодня", caption:"Выборы за сегодня", groups:segments };
       }
