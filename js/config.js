@@ -17,7 +17,7 @@ window.NAFS_CONFIG = {
      * CloudTips / Sber Tips style page.
      * Easy to open, good for one-tap support.
      */
-    tips: "",
+    tips: "https://pay.cloudtips.ru/p/ce29a1d6",
 
     /**
      * Boosty page if you want recurring support and a public profile.
