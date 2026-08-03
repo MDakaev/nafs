@@ -29,6 +29,7 @@ npx serve .
 - `js/config.js` — ссылки донатов
 - `docs/DONATIONS.md` — как принимать пожертвования
 - `docs/ANALYTICS.md` — Яндекс.Метрика
+- `docs/ROADMAP.md` — идеи на потом (дерево Имана и др.)
 - `QUOTES.md` — полный список цитат
 
 ## Форматирование
