@@ -8,7 +8,7 @@ window.NAFS_CONFIG = {
    * Create at https://metrika.yandex.ru/ and paste the number here.
    * Example: metrikaId: "12345678"
    */
-  metrikaId: "",
+  metrikaId: "111273371",
 
   donations: {
     /** CloudTips tip page — primary donation method for launch. */

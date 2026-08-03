@@ -66,14 +66,16 @@
     k.async = 1;
     k.src = r;
     a.parentNode.insertBefore(k, a);
-  })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+  })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=" + id, "ym");
 
   window.ym(Number(id), "init", {
+    ssr: true,
     clickmap: true,
     trackLinks: true,
     accurateTrackBounce: true,
-    webvisor: false, // keep off by default for privacy/perf
-    ecommerce: false,
+    webvisor: false,
+    referrer: document.referrer,
+    url: location.href,
   });
 
   // First paint context
