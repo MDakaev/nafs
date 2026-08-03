@@ -2,6 +2,7 @@
  * Nafs app runtime.
  * Depends on:
  * - js/config.js
+ * - js/analytics.js
  * - js/i18n.js
  * - js/motivations.js
  */
@@ -13,6 +14,7 @@
 
   const $ = (id) => document.getElementById(id);
   const t = (key) => window.NAFS_t(key, state.lang);
+  const analytics = () => window.NAFS_analytics || { track() {}, params() {}, enabled: false };
 
   /** Motivations for the active language. */
   function motivations() {
@@ -163,6 +165,7 @@
     $("delta").classList.add("pop");
     if (state.settings.haptic) navigator.vibrate?.(12);
     showToast(side === "me" ? t("toastMe") : t("toastNafs"));
+    analytics().track(side === "me" ? "mark_me" : "mark_nafs", { side });
     nextSpeech();
   }
 
@@ -324,11 +327,14 @@
     document.querySelector('meta[name="theme-color"]').content =
       actual === "dark" ? "#101713" : "#e8e5d9";
     save();
+    analytics().track("theme_change", { theme: choice, actual });
   }
 
   function setLanguage(lang) {
     state.lang = lang === "en" ? "en" : "ru";
     save();
+    analytics().track("language_change", { lang: state.lang });
+    analytics().params({ lang: state.lang });
     refreshAll();
   }
 
@@ -373,6 +379,7 @@
       showToast(t("toastDonateMissing"));
       return;
     }
+    analytics().track("donate_click", { method: kind });
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
@@ -411,11 +418,13 @@
       steps.innerHTML = `<div><b>${t("installOneTitle")}</b>${t("installOneBody")}</div>`;
       primary.textContent = t("install");
       primary.onclick = async () => {
+        analytics().track("install_click", { source: "sheet" });
         deferredPrompt.prompt();
         const result = await deferredPrompt.userChoice;
         deferredPrompt = null;
         closeLayers();
         showToast(result.outcome === "accepted" ? t("toastAdding") : t("toastLater"));
+        analytics().track("install_prompt_result", { outcome: result.outcome });
         updateInstallVisibility();
       };
     } else {
@@ -517,17 +526,23 @@
     }
     closeLayers();
     showToast(t(toastKey));
+    analytics().track("reset_marks", { period });
   });
-  $("installBannerBtn").addEventListener("click", () => openSheet("installSheet"));
+  $("installBannerBtn").addEventListener("click", () => {
+    analytics().track("install_click", { source: "banner" });
+    openSheet("installSheet");
+  });
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredPrompt = event;
+    analytics().track("install_prompt_available");
     updateInstallVisibility();
   });
   window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
     showToast(t("toastInstalled"));
+    analytics().track("app_installed");
     updateInstallVisibility();
   });
 

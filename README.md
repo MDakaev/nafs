@@ -28,6 +28,7 @@ npx serve .
 - `js/motivations.js` — цитаты
 - `js/config.js` — ссылки донатов
 - `docs/DONATIONS.md` — как принимать пожертвования
+- `docs/ANALYTICS.md` — Яндекс.Метрика
 - `QUOTES.md` — полный список цитат
 
 ## Форматирование
