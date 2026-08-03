@@ -1,0 +1,13 @@
+{
+  "name": "nafs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Nafs PWA — small victories over the self",
+  "scripts": {
+    "format": "prettier --write \"**/*.{html,js,css,md,json,webmanifest}\"",
+    "format:check": "prettier --check \"**/*.{html,js,css,md,json,webmanifest}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

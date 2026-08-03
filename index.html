@@ -1,1135 +1,1204 @@
 <!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#e8e5d9">
-  <meta name="description" content="Счётчик маленьких побед над собой">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Nafs">
-  <meta name="mobile-web-app-capable" content="yes">
-  <title>Nafs — маленькая победа над собой</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icons/icon-180.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Marcellus&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      color-scheme: light;
-      --canvas: #171a17;
-      --paper: #e8e5d9;
-      --paper-deep: #dedacd;
-      --ink: #20251f;
-      --muted: #787c72;
-      --faint: #9a9c93;
-      --green: #255c43;
-      --green-2: #377a5b;
-      --green-pale: #d6dfd4;
-      --green-faint: rgba(37,92,67,.08);
-      --line: rgba(32,37,31,.12);
-      --white: #fbfaf4;
-      --shadow: 0 20px 45px rgba(30,50,35,.16);
-      --serif: "Marcellus", Georgia, serif;
-      --sans: "DM Sans", system-ui, sans-serif;
-    }
-    [data-theme="dark"] {
-      color-scheme: dark;
-      --canvas: #090d0a;
-      --paper: #101713;
-      --paper-deep: #172019;
-      --ink: #e6e6da;
-      --muted: #969e94;
-      --faint: #747d74;
-      --green: #3f8a66;
-      --green-2: #5aa47d;
-      --green-pale: #23372b;
-      --green-faint: rgba(82,153,111,.09);
-      --line: rgba(230,230,218,.11);
-      --white: #eef1e8;
-      --shadow: 0 20px 50px rgba(0,0,0,.38);
-    }
-    * { box-sizing: border-box }
-    html, body { min-height: 100%; margin: 0 }
-    html { background: var(--paper) }
-    body {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background:
-        radial-gradient(circle at 50% 15%, rgba(74,115,82,.13), transparent 28%),
-        var(--canvas);
-      color: var(--ink);
-      font-family: var(--sans);
-      -webkit-font-smoothing: antialiased;
-      transition: background .3s ease;
-    }
-    button { color: inherit; font: inherit; -webkit-tap-highlight-color: transparent }
-    .app-shell {
-      position: relative;
-      width: min(100%,460px);
-      height: min(920px,100dvh);
-      overflow: hidden;
-      background: var(--paper);
-      box-shadow: 0 30px 90px rgba(0,0,0,.38);
-      isolation: isolate;
-    }
-    .grain {
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      opacity: .18;
-      pointer-events: none;
-      mix-blend-mode: multiply;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.3'/%3E%3C/svg%3E");
-    }
-    [data-theme="dark"] .grain { mix-blend-mode: soft-light; opacity: .1 }
-    .page {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      padding: calc(18px + env(safe-area-inset-top)) 22px calc(15px + env(safe-area-inset-bottom));
-      overflow-y: auto;
-      opacity: 0;
-      visibility: hidden;
-      transform: translateX(20px);
-      transition: opacity .26s ease, transform .32s cubic-bezier(.2,.8,.2,1), visibility .32s;
-    }
-    .page.active { opacity: 1; visibility: visible; transform: none }
-    .topbar {
-      flex: 0 0 auto;
-      min-height: 42px;
-      display: grid;
-      grid-template-columns: 42px 1fr 42px;
-      align-items: center;
-    }
-    .icon-button {
-      width: 40px;
-      height: 40px;
-      display: grid;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: 50%;
-      background: transparent;
-      cursor: pointer;
-      transition: background .18s ease, transform .18s ease;
-    }
-    .icon-button:active { transform: scale(.94); background: var(--green-faint) }
-    .menu-lines { width: 15px; display: grid; gap: 4px }
-    .menu-lines i { display: block; height: 1px; background: currentColor }
-    .menu-lines i:last-child { width: 10px }
-    .brand {
-      text-align: center;
-      font-family: var(--serif);
-      font-size: 23px;
-      letter-spacing: .01em;
-    }
-    .brand span { margin-left: 5px; color: var(--green); font-size: 11px }
-    .date-pill {
-      justify-self: end;
-      color: var(--muted);
-      font-size: 9px;
-      letter-spacing: .08em;
-      text-align: right;
-      text-transform: uppercase;
-    }
-
-    /* Home */
-    .speech {
-      min-height: 128px;
-      padding-top: clamp(25px,5vh,48px);
-      cursor: pointer;
-    }
-    .speech .arabic {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--green);
-      font-family: var(--serif);
-      font-size: 12px;
-    }
-    .speech h1 {
-      max-width: 390px;
-      margin: 0;
-      font-family: var(--serif);
-      font-size: clamp(30px,8vw,39px);
-      font-weight: 400;
-      line-height: 1.04;
-      letter-spacing: -.035em;
-      text-wrap: balance;
-      animation: speech-in .45s ease both;
-    }
-    .speech p {
-      margin: 9px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.48;
-      animation: speech-in .45s .05s ease both;
-    }
-    .speech .shuffle-hint {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      margin-top: 10px;
-      color: var(--faint);
-      font-size: 8px;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-    }
-    @keyframes speech-in {
-      from { opacity: 0; transform: translateY(5px) }
-      to { opacity: 1; transform: none }
-    }
-    .balance-card {
-      position: relative;
-      margin: auto 0 18px;
-      padding: 22px 20px 18px;
-      overflow: hidden;
-      border-radius: 27px;
-      background: linear-gradient(145deg, #173d2c, #285f45);
-      color: #f6f4eb;
-      box-shadow: var(--shadow);
-      transition: background .55s cubic-bezier(.2,.8,.2,1);
-    }
-    .balance-card::after {
-      content: "";
-      position: absolute;
-      width: 210px;
-      height: 210px;
-      top: -125px;
-      right: -90px;
-      border: 27px solid rgba(255,255,255,.055);
-      border-radius: 50%;
-    }
-    .card-top {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      justify-content: space-between;
-      color: rgba(255,255,255,.62);
-      font-size: 9px;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
-    .balance-main {
-      position: relative;
-      z-index: 1;
-      margin: 16px 0 21px;
-      display: flex;
-      align-items: baseline;
-      gap: 9px;
-    }
-    .balance-main strong {
-      font-family: var(--serif);
-      font-size: 63px;
-      font-weight: 400;
-      line-height: .82;
-      letter-spacing: -.06em;
-      transition: transform .25s ease;
-    }
-    .balance-main strong.pop { animation: pop .3s ease }
-    @keyframes pop { 50% { transform: scale(1.12) } }
-    .balance-main span { color: rgba(255,255,255,.58); font-size: 12px }
-    .balance-track {
-      position: relative;
-      z-index: 1;
-      height: 7px;
-      overflow: hidden;
-      border-radius: 9px;
-      background: rgba(255,255,255,.14);
-    }
-    .balance-fill {
-      width: 50%;
-      height: 100%;
-      border-radius: inherit;
-      background: #c7d8a4;
-      transition: width .5s cubic-bezier(.2,.8,.2,1);
-    }
-    .card-split {
-      position: relative;
-      z-index: 1;
-      margin-top: 10px;
-      display: flex;
-      justify-content: space-between;
-      color: rgba(255,255,255,.64);
-      font-size: 9px;
-    }
-    .card-split b { color: #fff; font-size: 11px; font-weight: 500 }
-    .question {
-      margin: 0 0 11px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-    }
-    .actions {
-      flex: 0 0 auto;
-      display: grid;
-      grid-template-columns: repeat(2,minmax(0,1fr));
-      align-items: stretch;
-      gap: 10px;
-    }
-    .action {
-      width: 100%;
-      height: 122px;
-      min-width: 0;
-      min-height: 0;
-      padding: 17px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      border: 0;
-      cursor: pointer;
-      text-align: left;
-      transition: transform .16s ease, filter .2s ease;
-    }
-    .action:active { transform: scale(.97); filter: brightness(1.05) }
-    .action.me {
-      border-radius: 58px 58px 18px 18px;
-      background: var(--green-2);
-      color: #fff;
-      box-shadow: 0 13px 28px rgba(37,92,67,.17);
-    }
-    .action.nafs {
-      border: 1px solid var(--line);
-      border-radius: 58px 58px 18px 18px;
-      background: rgba(255,255,255,.08);
-      color: var(--muted);
-    }
-    .action .plus {
-      width: 28px;
-      height: 28px;
-      display: grid;
-      place-items: center;
-      border: 1px solid currentColor;
-      border-radius: 50%;
-      font-size: 17px;
-      line-height: 1;
-      opacity: .9;
-    }
-    .action b {
-      display: block;
-      margin-top: 0;
-      font-family: var(--serif);
-      font-size: 24px;
-      font-weight: 400;
-    }
-    .action small { display: block; margin-top: 3px; font-size: 9px; opacity: .62 }
-    .undo {
-      align-self: center;
-      margin-top: 9px;
-      padding: 4px 10px;
-      border: 0;
-      background: transparent;
-      color: var(--faint);
-      cursor: pointer;
-      font-size: 9px;
-    }
-
-    /* History */
-    .back { justify-self: start; font-size: 19px }
-    .history-head { margin: 24px 0 19px }
-    .history-head .overline { color: var(--green); font-size: 9px; letter-spacing: .12em; text-transform: uppercase }
-    .history-head h2 { margin: 6px 0 0; font-family: var(--serif); font-size: 36px; font-weight: 400; letter-spacing: -.04em }
-    .periods {
-      display: grid;
-      grid-template-columns: repeat(4,1fr);
-      gap: 6px;
-      padding: 5px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-    }
-    .period {
-      padding: 10px 5px;
-      border: 0;
-      border-radius: 11px;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 10px;
-    }
-    .period.active { background: var(--green); color: #fff }
-    .history-summary {
-      margin: 17px 0;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-    }
-    .summary-item { padding: 15px 7px; border-right: 1px solid var(--line) }
-    .summary-item:last-child { border: 0 }
-    .summary-item span { display: block; color: var(--muted); font-size: 8px; letter-spacing: .08em; text-transform: uppercase }
-    .summary-item strong { display: block; margin-top: 7px; font-family: var(--serif); font-size: 25px; font-weight: 400 }
-    .summary-item:first-child strong { color: var(--green) }
-    .chart-card {
-      padding: 17px 15px 13px;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: rgba(255,255,255,.045);
-    }
-    .chart-title { display: flex; justify-content: space-between; color: var(--muted); font-size: 9px }
-    .chart {
-      height: 175px;
-      margin-top: 18px;
-      display: flex;
-      align-items: flex-end;
-      gap: 5px;
-    }
-    .chart-group {
-      min-width: 0;
-      flex: 1;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 7px;
-    }
-    .bars {
-      width: 100%;
-      flex: 1;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 2px;
-      border-bottom: 1px solid var(--line);
-    }
-    .bar {
-      width: min(12px,42%);
-      min-height: 2px;
-      border-radius: 5px 5px 1px 1px;
-      transition: height .45s cubic-bezier(.2,.8,.2,1);
-    }
-    .bar.me { background: var(--green) }
-    .bar.nafs { background: var(--green-pale) }
-    .chart-label {
-      width: 100%;
-      overflow: hidden;
-      color: var(--faint);
-      font-size: 7px;
-      text-align: center;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .legend { margin-top: 10px; display: flex; gap: 14px; color: var(--muted); font-size: 8px }
-    .legend span { display: flex; align-items: center; gap: 5px }
-    .legend i { width: 7px; height: 7px; border-radius: 2px; background: var(--green) }
-    .legend span:last-child i { background: var(--green-pale) }
-    .history-note {
-      margin-top: 15px;
-      padding: 15px;
-      border-radius: 17px;
-      background: var(--green-faint);
-      color: var(--muted);
-      font-family: var(--serif);
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    /* Drawer and sheets */
-    .scrim {
-      position: absolute;
-      inset: 0;
-      z-index: 40;
-      background: rgba(12,17,13,.42);
-      opacity: 0;
-      visibility: hidden;
-      transition: .25s ease;
-      backdrop-filter: blur(2px);
-    }
-    .scrim.open { opacity: 1; visibility: visible }
-    .drawer {
-      position: absolute;
-      inset: 0 auto 0 0;
-      z-index: 50;
-      width: min(82%,350px);
-      padding: calc(25px + env(safe-area-inset-top)) 20px 22px;
-      display: flex;
-      flex-direction: column;
-      background: var(--paper);
-      box-shadow: 20px 0 50px rgba(0,0,0,.16);
-      transform: translateX(-102%);
-      transition: transform .35s cubic-bezier(.2,.8,.2,1);
-    }
-    .drawer.open { transform: none }
-    .drawer-top { display: flex; align-items: center; justify-content: space-between }
-    .drawer-logo { font-family: var(--serif); font-size: 25px }
-    .drawer-logo span { color: var(--green); font-size: 12px }
-    .drawer-caption { margin: 34px 0 13px; color: var(--faint); font-size: 8px; letter-spacing: .15em; text-transform: uppercase }
-    .menu-list { display: grid; gap: 4px }
-    .menu-item {
-      width: 100%;
-      padding: 15px 8px;
-      display: grid;
-      grid-template-columns: 34px 1fr auto;
-      align-items: center;
-      gap: 8px;
-      border: 0;
-      border-bottom: 1px solid var(--line);
-      background: transparent;
-      cursor: pointer;
-      text-align: left;
-    }
-    .menu-icon {
-      width: 28px; height: 28px;
-      display: grid; place-items: center;
-      border-radius: 9px;
-      background: var(--green-faint);
-      color: var(--green);
-      font-size: 13px;
-    }
-    .menu-item b { font-family: var(--serif); font-size: 17px; font-weight: 400 }
-    .menu-item small { display: block; margin-top: 2px; color: var(--muted); font-size: 8px }
-    .chevron { color: var(--faint); font-size: 13px }
-    .drawer-quote { margin-top: auto; color: var(--muted); font-family: var(--serif); font-size: 13px; line-height: 1.5 }
-    .drawer-quote::before { content: "“"; display: block; color: var(--green); font-size: 28px; line-height: .7 }
-    .sheet {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      z-index: 60;
-      padding: 26px 22px calc(22px + env(safe-area-inset-bottom));
-      border-radius: 28px 28px 0 0;
-      background: var(--paper);
-      box-shadow: 0 -20px 60px rgba(0,0,0,.18);
-      transform: translateY(105%);
-      transition: transform .35s cubic-bezier(.2,.8,.2,1);
-    }
-    .sheet.open { transform: none }
-    .sheet-handle { width: 36px; height: 4px; margin: -13px auto 19px; border-radius: 5px; background: var(--line) }
-    .sheet h3 { margin: 0 0 6px; font-family: var(--serif); font-size: 26px; font-weight: 400 }
-    .sheet > p { margin: 0 0 20px; color: var(--muted); font-size: 11px; line-height: 1.5 }
-    .donation-options, .theme-options { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px }
-    .option {
-      padding: 14px 8px;
-      border: 1px solid var(--line);
-      border-radius: 13px;
-      background: transparent;
-      cursor: pointer;
-      text-align: center;
-      font-size: 11px;
-    }
-    .option.selected { border-color: var(--green); background: var(--green-faint); color: var(--green) }
-    .primary {
-      width: 100%;
-      margin-top: 14px;
-      padding: 14px;
-      border: 0;
-      border-radius: 14px;
-      background: var(--green);
-      color: #fff;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .setting-row {
-      padding: 13px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--line);
-      font-size: 12px;
-    }
-    .switch {
-      width: 44px; height: 25px; padding: 3px;
-      border: 0; border-radius: 20px; background: var(--green-pale); cursor: pointer;
-    }
-    .switch::after {
-      content: ""; display: block; width: 19px; height: 19px;
-      border-radius: 50%; background: var(--white); box-shadow: 0 2px 6px rgba(0,0,0,.16);
-      transition: transform .2s ease;
-    }
-    .switch.on { background: var(--green) }
-    .switch.on::after { transform: translateX(19px) }
-    .danger { color: #9a4c47; cursor: pointer; border: 0; background: transparent; font-size: 11px }
-    .toast {
-      position: absolute;
-      left: 50%;
-      bottom: calc(20px + env(safe-area-inset-bottom));
-      z-index: 80;
-      max-width: calc(100% - 40px);
-      padding: 10px 15px;
-      border-radius: 30px;
-      background: var(--ink);
-      color: var(--paper);
-      box-shadow: 0 10px 30px rgba(0,0,0,.2);
-      font-size: 10px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transform: translate(-50%,12px);
-      transition: .25s ease;
-    }
-    .toast.show { opacity: 1; transform: translate(-50%,0) }
-    .install-banner {
-      display: none;
-      margin: 12px 0 0;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(255,255,255,.35);
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .install-banner.show { display: flex }
-    .install-banner p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.4 }
-    .install-banner strong { display: block; margin-bottom: 2px; color: var(--ink); font-size: 12px }
-    .install-banner button {
-      flex: 0 0 auto;
-      padding: 9px 12px;
-      border: 0;
-      border-radius: 999px;
-      background: var(--green);
-      color: #fff;
-      cursor: pointer;
-      font-size: 10px;
-    }
-    .install-steps { display: grid; gap: 10px; margin: 0 0 8px }
-    .install-steps div {
-      padding: 12px 13px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-    .install-steps b { display: block; margin-bottom: 3px; font-family: var(--serif); font-size: 15px; font-weight: 400 }
-    @media (min-width: 520px) {
-      .app-shell { border-radius: 34px; border: 1px solid rgba(255,255,255,.12) }
-    }
-    @media (max-width: 519px) {
-      body { background: var(--paper) }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#e8e5d9" />
+    <meta name="description" content="Счётчик маленьких побед над собой" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Nafs" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Nafs — маленькая победа над собой</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Marcellus&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --canvas: #171a17;
+        --paper: #e8e5d9;
+        --paper-deep: #dedacd;
+        --ink: #20251f;
+        --muted: #787c72;
+        --faint: #9a9c93;
+        --green: #255c43;
+        --green-2: #377a5b;
+        --green-pale: #d6dfd4;
+        --green-faint: rgba(37, 92, 67, 0.08);
+        --line: rgba(32, 37, 31, 0.12);
+        --white: #fbfaf4;
+        --shadow: 0 20px 45px rgba(30, 50, 35, 0.16);
+        --serif: "Marcellus", Georgia, serif;
+        --sans: "DM Sans", system-ui, sans-serif;
+      }
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --canvas: #090d0a;
+        --paper: #101713;
+        --paper-deep: #172019;
+        --ink: #e6e6da;
+        --muted: #969e94;
+        --faint: #747d74;
+        --green: #3f8a66;
+        --green-2: #5aa47d;
+        --green-pale: #23372b;
+        --green-faint: rgba(82, 153, 111, 0.09);
+        --line: rgba(230, 230, 218, 0.11);
+        --white: #eef1e8;
+        --shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+      html {
+        background: var(--paper);
+      }
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 50% 15%, rgba(74, 115, 82, 0.13), transparent 28%),
+          var(--canvas);
+        color: var(--ink);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        transition: background 0.3s ease;
+      }
+      button {
+        color: inherit;
+        font: inherit;
+        -webkit-tap-highlight-color: transparent;
+      }
       .app-shell {
-        width: 100%;
-        height: 100dvh;
-        min-height: 100svh;
-        border-radius: 0;
-        box-shadow: none;
+        position: relative;
+        width: min(100%, 460px);
+        height: min(920px, 100dvh);
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
+        isolation: isolate;
+      }
+      .grain {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.18;
+        pointer-events: none;
+        mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.3'/%3E%3C/svg%3E");
+      }
+      [data-theme="dark"] .grain {
+        mix-blend-mode: soft-light;
+        opacity: 0.1;
       }
       .page {
-        padding-top: calc(5px + env(safe-area-inset-top));
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        padding: calc(18px + env(safe-area-inset-top)) 22px calc(15px + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(20px);
+        transition:
+          opacity 0.26s ease,
+          transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+          visibility 0.32s;
       }
-    }
-    @media (max-height: 740px) {
-      .speech { min-height: 100px; padding-top: 20px }
-      .speech h1 { font-size: 28px }
-      .balance-card { padding-block: 17px 15px; margin-bottom: 12px }
-      .balance-main { margin-block: 12px 16px }
-      .balance-main strong { font-size: 52px }
-      .action { height: 103px }
-    }
-  </style>
-</head>
-<body>
-  <main class="app-shell" id="app">
-    <div class="grain"></div>
+      .page.active {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+      }
+      .topbar {
+        flex: 0 0 auto;
+        min-height: 42px;
+        display: grid;
+        grid-template-columns: 42px 1fr 42px;
+        align-items: center;
+      }
+      .icon-button {
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        transition:
+          background 0.18s ease,
+          transform 0.18s ease;
+      }
+      .icon-button:active {
+        transform: scale(0.94);
+        background: var(--green-faint);
+      }
+      .menu-lines {
+        width: 15px;
+        display: grid;
+        gap: 4px;
+      }
+      .menu-lines i {
+        display: block;
+        height: 1px;
+        background: currentColor;
+      }
+      .menu-lines i:last-child {
+        width: 10px;
+      }
+      .brand {
+        text-align: center;
+        font-family: var(--serif);
+        font-size: 23px;
+        letter-spacing: 0.01em;
+      }
+      .brand span {
+        margin-left: 5px;
+        color: var(--green);
+        font-size: 11px;
+      }
+      .date-pill {
+        justify-self: end;
+        color: var(--muted);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-align: right;
+        text-transform: uppercase;
+      }
 
-    <section class="page active" id="homePage">
-      <header class="topbar">
-        <button class="icon-button" id="openMenu" aria-label="Открыть меню">
-          <span class="menu-lines"><i></i><i></i></span>
-        </button>
-        <div class="brand">Nafs <span>نَفْس</span></div>
-        <div class="date-pill" id="todayLabel"></div>
-      </header>
+      /* Home */
+      .speech {
+        min-height: 128px;
+        padding-top: clamp(25px, 5vh, 48px);
+        cursor: pointer;
+      }
+      .speech .arabic {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--green);
+        font-family: var(--serif);
+        font-size: 12px;
+      }
+      .speech h1 {
+        max-width: 390px;
+        margin: 0;
+        font-family: var(--serif);
+        font-size: clamp(30px, 8vw, 39px);
+        font-weight: 400;
+        line-height: 1.04;
+        letter-spacing: -0.035em;
+        text-wrap: balance;
+        animation: speech-in 0.45s ease both;
+      }
+      .speech p {
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.48;
+        animation: speech-in 0.45s 0.05s ease both;
+      }
+      .speech .shuffle-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 10px;
+        color: var(--faint);
+        font-size: 8px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      @keyframes speech-in {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .balance-card {
+        position: relative;
+        margin: auto 0 18px;
+        padding: 22px 20px 18px;
+        overflow: hidden;
+        border-radius: 27px;
+        background: linear-gradient(145deg, #173d2c, #285f45);
+        color: #f6f4eb;
+        box-shadow: var(--shadow);
+        transition: background 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .balance-card::after {
+        content: "";
+        position: absolute;
+        width: 210px;
+        height: 210px;
+        top: -125px;
+        right: -90px;
+        border: 27px solid rgba(255, 255, 255, 0.055);
+        border-radius: 50%;
+      }
+      .card-top {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .balance-main {
+        position: relative;
+        z-index: 1;
+        margin: 16px 0 21px;
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+      }
+      .balance-main strong {
+        font-family: var(--serif);
+        font-size: 63px;
+        font-weight: 400;
+        line-height: 0.82;
+        letter-spacing: -0.06em;
+        transition: transform 0.25s ease;
+      }
+      .balance-main strong.pop {
+        animation: pop 0.3s ease;
+      }
+      @keyframes pop {
+        50% {
+          transform: scale(1.12);
+        }
+      }
+      .balance-main span {
+        color: rgba(255, 255, 255, 0.58);
+        font-size: 12px;
+      }
+      .balance-track {
+        position: relative;
+        z-index: 1;
+        height: 7px;
+        overflow: hidden;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .balance-fill {
+        width: 50%;
+        height: 100%;
+        border-radius: inherit;
+        background: #c7d8a4;
+        transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .card-split {
+        position: relative;
+        z-index: 1;
+        margin-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        color: rgba(255, 255, 255, 0.64);
+        font-size: 9px;
+      }
+      .card-split b {
+        color: #fff;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .question {
+        margin: 0 0 11px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+      .actions {
+        flex: 0 0 auto;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 10px;
+      }
+      .action {
+        width: 100%;
+        height: 122px;
+        min-width: 0;
+        min-height: 0;
+        padding: 17px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        border: 0;
+        cursor: pointer;
+        text-align: left;
+        transition:
+          transform 0.16s ease,
+          filter 0.2s ease;
+      }
+      .action:active {
+        transform: scale(0.97);
+        filter: brightness(1.05);
+      }
+      .action.me {
+        border-radius: 58px 58px 18px 18px;
+        background: var(--green-2);
+        color: #fff;
+        box-shadow: 0 13px 28px rgba(37, 92, 67, 0.17);
+      }
+      .action.nafs {
+        border: 1px solid var(--line);
+        border-radius: 58px 58px 18px 18px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+      }
+      .action .plus {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border: 1px solid currentColor;
+        border-radius: 50%;
+        font-size: 17px;
+        line-height: 1;
+        opacity: 0.9;
+      }
+      .action b {
+        display: block;
+        margin-top: 0;
+        font-family: var(--serif);
+        font-size: 24px;
+        font-weight: 400;
+      }
+      .action small {
+        display: block;
+        margin-top: 3px;
+        font-size: 9px;
+        opacity: 0.62;
+      }
+      .undo {
+        align-self: center;
+        margin-top: 9px;
+        padding: 4px 10px;
+        border: 0;
+        background: transparent;
+        color: var(--faint);
+        cursor: pointer;
+        font-size: 9px;
+      }
 
-      <div class="install-banner" id="installBanner">
-        <p><strong>Добавь на экран Домой</strong>Так Nafs откроется как приложение</p>
-        <button type="button" id="installBannerBtn">Установить</button>
-      </div>
+      /* History */
+      .back {
+        justify-self: start;
+        font-size: 19px;
+      }
+      .history-head {
+        margin: 24px 0 19px;
+      }
+      .history-head .overline {
+        color: var(--green);
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .history-head h2 {
+        margin: 6px 0 0;
+        font-family: var(--serif);
+        font-size: 36px;
+        font-weight: 400;
+        letter-spacing: -0.04em;
+      }
+      .periods {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 5px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+      .period {
+        padding: 10px 5px;
+        border: 0;
+        border-radius: 11px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .period.active {
+        background: var(--green);
+        color: #fff;
+      }
+      .history-summary {
+        margin: 17px 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      .summary-item {
+        padding: 15px 7px;
+        border-right: 1px solid var(--line);
+      }
+      .summary-item:last-child {
+        border: 0;
+      }
+      .summary-item span {
+        display: block;
+        color: var(--muted);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .summary-item strong {
+        display: block;
+        margin-top: 7px;
+        font-family: var(--serif);
+        font-size: 25px;
+        font-weight: 400;
+      }
+      .summary-item:first-child strong {
+        color: var(--green);
+      }
+      .chart-card {
+        padding: 17px 15px 13px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.045);
+      }
+      .chart-title {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .chart {
+        height: 175px;
+        margin-top: 18px;
+        display: flex;
+        align-items: flex-end;
+        gap: 5px;
+      }
+      .chart-group {
+        min-width: 0;
+        flex: 1;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 7px;
+      }
+      .bars {
+        width: 100%;
+        flex: 1;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 2px;
+        border-bottom: 1px solid var(--line);
+      }
+      .bar {
+        width: min(12px, 42%);
+        min-height: 2px;
+        border-radius: 5px 5px 1px 1px;
+        transition: height 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .bar.me {
+        background: var(--green);
+      }
+      .bar.nafs {
+        background: var(--green-pale);
+      }
+      .chart-label {
+        width: 100%;
+        overflow: hidden;
+        color: var(--faint);
+        font-size: 7px;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .legend {
+        margin-top: 10px;
+        display: flex;
+        gap: 14px;
+        color: var(--muted);
+        font-size: 8px;
+      }
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .legend i {
+        width: 7px;
+        height: 7px;
+        border-radius: 2px;
+        background: var(--green);
+      }
+      .legend span:last-child i {
+        background: var(--green-pale);
+      }
+      .history-note {
+        margin-top: 15px;
+        padding: 15px;
+        border-radius: 17px;
+        background: var(--green-faint);
+        color: var(--muted);
+        font-family: var(--serif);
+        font-size: 14px;
+        line-height: 1.45;
+      }
 
-      <div class="speech" id="speech" title="Нажми, чтобы сменить мысль">
-        <span class="arabic">صَبْر</span>
-        <h1 id="speechTitle"></h1>
-        <p id="speechBody"></p>
-        <span class="shuffle-hint">↻ другая мысль</span>
-      </div>
+      /* Drawer and sheets */
+      .scrim {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        background: rgba(12, 17, 13, 0.42);
+        opacity: 0;
+        visibility: hidden;
+        transition: 0.25s ease;
+        backdrop-filter: blur(2px);
+      }
+      .scrim.open {
+        opacity: 1;
+        visibility: visible;
+      }
+      .drawer {
+        position: absolute;
+        inset: 0 auto 0 0;
+        z-index: 50;
+        width: min(82%, 350px);
+        padding: calc(25px + env(safe-area-inset-top)) 20px 22px;
+        display: flex;
+        flex-direction: column;
+        background: var(--paper);
+        box-shadow: 20px 0 50px rgba(0, 0, 0, 0.16);
+        transform: translateX(-102%);
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .drawer.open {
+        transform: none;
+      }
+      .drawer-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .drawer-logo {
+        font-family: var(--serif);
+        font-size: 25px;
+      }
+      .drawer-logo span {
+        color: var(--green);
+        font-size: 12px;
+      }
+      .drawer-caption {
+        margin: 34px 0 13px;
+        color: var(--faint);
+        font-size: 8px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+      .menu-list {
+        display: grid;
+        gap: 4px;
+      }
+      .menu-item {
+        width: 100%;
+        padding: 15px 8px;
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+      }
+      .menu-icon {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 9px;
+        background: var(--green-faint);
+        color: var(--green);
+        font-size: 13px;
+      }
+      .menu-item b {
+        font-family: var(--serif);
+        font-size: 17px;
+        font-weight: 400;
+      }
+      .menu-item small {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 8px;
+      }
+      .chevron {
+        color: var(--faint);
+        font-size: 13px;
+      }
+      .drawer-quote {
+        margin-top: auto;
+        color: var(--muted);
+        font-family: var(--serif);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .drawer-quote::before {
+        content: "“";
+        display: block;
+        color: var(--green);
+        font-size: 28px;
+        line-height: 0.7;
+      }
+      .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 60;
+        padding: 26px 22px calc(22px + env(safe-area-inset-bottom));
+        border-radius: 28px 28px 0 0;
+        background: var(--paper);
+        box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.18);
+        transform: translateY(105%);
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .sheet.open {
+        transform: none;
+      }
+      .sheet-handle {
+        width: 36px;
+        height: 4px;
+        margin: -13px auto 19px;
+        border-radius: 5px;
+        background: var(--line);
+      }
+      .sheet h3 {
+        margin: 0 0 6px;
+        font-family: var(--serif);
+        font-size: 26px;
+        font-weight: 400;
+      }
+      .sheet > p {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+      .donation-options,
+      .theme-options,
+      .language-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .donation-methods {
+        display: grid;
+        gap: 8px;
+      }
+      .donation-method {
+        width: 100%;
+        padding: 13px 14px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 10px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+      }
+      .donation-method b {
+        font-family: var(--serif);
+        font-size: 16px;
+        font-weight: 400;
+      }
+      .donation-method small {
+        grid-column: 1 / -1;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .donation-method .chevron {
+        color: var(--faint);
+        align-self: center;
+      }
+      .donate-caption {
+        margin: 14px 0 8px;
+        color: var(--faint);
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .donate-setup {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .option {
+        padding: 14px 8px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: transparent;
+        cursor: pointer;
+        text-align: center;
+        font-size: 11px;
+      }
+      .option.selected {
+        border-color: var(--green);
+        background: var(--green-faint);
+        color: var(--green);
+      }
+      .primary {
+        width: 100%;
+        margin-top: 14px;
+        padding: 14px;
+        border: 0;
+        border-radius: 14px;
+        background: var(--green);
+        color: #fff;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .setting-row {
+        padding: 13px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .switch {
+        width: 44px;
+        height: 25px;
+        padding: 3px;
+        border: 0;
+        border-radius: 20px;
+        background: var(--green-pale);
+        cursor: pointer;
+      }
+      .switch::after {
+        content: "";
+        display: block;
+        width: 19px;
+        height: 19px;
+        border-radius: 50%;
+        background: var(--white);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+        transition: transform 0.2s ease;
+      }
+      .switch.on {
+        background: var(--green);
+      }
+      .switch.on::after {
+        transform: translateX(19px);
+      }
+      .danger {
+        color: #9a4c47;
+        cursor: pointer;
+        border: 0;
+        background: transparent;
+        font-size: 11px;
+      }
+      .toast {
+        position: absolute;
+        left: 50%;
+        bottom: calc(20px + env(safe-area-inset-bottom));
+        z-index: 80;
+        max-width: calc(100% - 40px);
+        padding: 10px 15px;
+        border-radius: 30px;
+        background: var(--ink);
+        color: var(--paper);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        font-size: 10px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, 12px);
+        transition: 0.25s ease;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      .install-banner {
+        display: none;
+        margin: 12px 0 0;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.35);
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .install-banner.show {
+        display: flex;
+      }
+      .install-banner p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .install-banner strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--ink);
+        font-size: 12px;
+      }
+      .install-banner button {
+        flex: 0 0 auto;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--green);
+        color: #fff;
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .install-steps {
+        display: grid;
+        gap: 10px;
+        margin: 0 0 8px;
+      }
+      .install-steps div {
+        padding: 12px 13px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .install-steps b {
+        display: block;
+        margin-bottom: 3px;
+        font-family: var(--serif);
+        font-size: 15px;
+        font-weight: 400;
+      }
+      @media (min-width: 520px) {
+        .app-shell {
+          border-radius: 34px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+      }
+      @media (max-width: 519px) {
+        body {
+          background: var(--paper);
+        }
+        .app-shell {
+          width: 100%;
+          height: 100dvh;
+          min-height: 100svh;
+          border-radius: 0;
+          box-shadow: none;
+        }
+        .page {
+          padding-top: calc(5px + env(safe-area-inset-top));
+        }
+      }
+      @media (max-height: 740px) {
+        .speech {
+          min-height: 100px;
+          padding-top: 20px;
+        }
+        .speech h1 {
+          font-size: 28px;
+        }
+        .balance-card {
+          padding-block: 17px 15px;
+          margin-bottom: 12px;
+        }
+        .balance-main {
+          margin-block: 12px 16px;
+        }
+        .balance-main strong {
+          font-size: 52px;
+        }
+        .action {
+          height: 103px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- App shell: one phone-like surface on desktop, full-bleed on mobile -->
+    <main class="app-shell" id="app">
+      <div class="grain"></div>
 
-      <section class="balance-card" id="balanceCard">
-        <div class="card-top"><span>Баланс сегодня</span><span id="cardStatus">тишина</span></div>
-        <div class="balance-main"><strong id="delta">0</strong><span id="deltaCaption">поровну</span></div>
-        <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
-        <div class="card-split">
-          <span>Я · <b id="meCount">0</b></span>
-          <span>Нафс · <b id="nafsCount">0</b></span>
+      <!-- HOME -->
+      <section class="page active" id="homePage">
+        <header class="topbar">
+          <button
+            class="icon-button"
+            id="openMenu"
+            data-i18n-aria="openMenu"
+            aria-label="Open menu"
+          >
+            <span class="menu-lines"><i></i><i></i></span>
+          </button>
+          <div class="brand">Nafs <span data-i18n="brandAr">نَفْس</span></div>
+          <div class="date-pill" id="todayLabel"></div>
+        </header>
+
+        <div class="install-banner" id="installBanner">
+          <p>
+            <strong data-i18n="installBannerTitle">Add to Home Screen</strong>
+            <span data-i18n="installBannerBody">Open Nafs like an app</span>
+          </p>
+          <button type="button" id="installBannerBtn" data-i18n="install">Install</button>
+        </div>
+
+        <div class="speech" id="speech" title="Shuffle thought">
+          <span class="arabic" data-i18n="sabr">صَبْر</span>
+          <h1 id="speechTitle"></h1>
+          <p id="speechBody"></p>
+          <span class="shuffle-hint"
+            >↻ <span data-i18n="anotherThought">another thought</span></span
+          >
+        </div>
+
+        <section class="balance-card" id="balanceCard">
+          <div class="card-top">
+            <span data-i18n="balanceToday">Today's balance</span>
+            <span id="cardStatus">quiet</span>
+          </div>
+          <div class="balance-main">
+            <strong id="delta">0</strong><span id="deltaCaption">even</span>
+          </div>
+          <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
+          <div class="card-split">
+            <span><span data-i18n="me">Me</span> · <b id="meCount">0</b></span>
+            <span><span data-i18n="nafs">Nafs</span> · <b id="nafsCount">0</b></span>
+          </div>
+        </section>
+
+        <p class="question" data-i18n="prompt">Who steered this time?</p>
+        <div class="actions">
+          <button class="action me" data-mark="me">
+            <span class="plus">+</span><b data-i18n="me">Me</b>
+          </button>
+          <button class="action nafs" data-mark="nafs">
+            <span class="plus">+</span><b data-i18n="nafs">Nafs</b>
+          </button>
+        </div>
+        <button class="undo" id="undo" data-i18n="undo">Undo last mark</button>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="page" id="historyPage">
+        <header class="topbar">
+          <button class="icon-button back" id="backHome" data-i18n-aria="back" aria-label="Back">
+            ←
+          </button>
+          <div class="brand" data-i18n="history">History</div>
+          <div></div>
+        </header>
+        <div class="history-head">
+          <span class="overline" data-i18n="mirror">Mirror of choice</span>
+          <h2 id="historyTitle">Today</h2>
+        </div>
+        <nav class="periods" aria-label="History period">
+          <button class="period active" data-period="day" data-i18n="periodDay">Day</button>
+          <button class="period" data-period="week" data-i18n="periodWeek">Week</button>
+          <button class="period" data-period="month" data-i18n="periodMonth">Month</button>
+          <button class="period" data-period="year" data-i18n="periodYear">Year</button>
+        </nav>
+        <div class="history-summary">
+          <div class="summary-item">
+            <span data-i18n="me">Me</span><strong id="sumMe">0</strong>
+          </div>
+          <div class="summary-item">
+            <span data-i18n="balance">Balance</span><strong id="sumDelta">0</strong>
+          </div>
+          <div class="summary-item">
+            <span data-i18n="nafs">Nafs</span><strong id="sumNafs">0</strong>
+          </div>
+        </div>
+        <section class="chart-card">
+          <div class="chart-title">
+            <span id="chartCaption">Choices today</span>
+            <span id="chartTotal">0 marks</span>
+          </div>
+          <div class="chart" id="chart"></div>
+          <div class="legend">
+            <span><i></i><span data-i18n="me">Me</span></span>
+            <span><i></i><span data-i18n="nafs">Nafs</span></span>
+          </div>
+        </section>
+        <div class="history-note" id="historyNote"></div>
+      </section>
+
+      <div class="scrim" id="scrim"></div>
+      <aside class="drawer" id="drawer" aria-label="Menu">
+        <div class="drawer-top">
+          <div class="drawer-logo">Nafs <span data-i18n="brandAr">نَفْس</span></div>
+          <button class="icon-button" id="closeMenu" aria-label="Close">×</button>
+        </div>
+        <p class="drawer-caption" data-i18n="menuSpace">A space for attention</p>
+        <nav class="menu-list">
+          <button class="menu-item" data-menu="history">
+            <span class="menu-icon">↗</span>
+            <span
+              ><b data-i18n="menuHistory">History</b
+              ><small data-i18n="menuHistoryHint">day, week, month, year</small></span
+            >
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" data-menu="donate">
+            <span class="menu-icon">♡</span>
+            <span
+              ><b data-i18n="menuDonate">Donate</b
+              ><small data-i18n="menuDonateHint">support the project</small></span
+            >
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" data-menu="settings">
+            <span class="menu-icon">⌁</span>
+            <span
+              ><b data-i18n="menuSettings">Settings</b
+              ><small data-i18n="menuSettingsHint">haptics, language, and data</small></span
+            >
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" data-menu="theme">
+            <span class="menu-icon">◐</span>
+            <span
+              ><b data-i18n="menuTheme">Theme</b><small id="themeMenuCaption">light</small></span
+            >
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" data-menu="install">
+            <span class="menu-icon">↓</span>
+            <span
+              ><b data-i18n="menuInstall">Add to Home Screen</b
+              ><small id="installMenuCaption" data-i18n="menuInstallHint"
+                >install the app</small
+              ></span
+            >
+            <span class="chevron">›</span>
+          </button>
+        </nav>
+        <p class="drawer-quote" id="drawerQuote"></p>
+      </aside>
+
+      <!-- DONATE -->
+      <section class="sheet" id="donateSheet">
+        <div class="sheet-handle"></div>
+        <h3 data-i18n="donateTitle">Support Nafs</h3>
+        <p data-i18n="donateLead">
+          Pick a convenient way. Support helps keep Nafs calm, ad-free, and unhurried.
+        </p>
+        <div class="donate-caption" data-i18n="donateBest">Best for starting</div>
+        <div class="donation-methods">
+          <button class="donation-method" type="button" data-donate="sbp">
+            <b data-i18n="donateSbp">SBP / bank transfer</b>
+            <span class="chevron">›</span>
+            <small data-i18n="donateSbpHint">Most familiar for users in Russia</small>
+          </button>
+          <button class="donation-method" type="button" data-donate="tips">
+            <b data-i18n="donateTips">CloudTips / tips</b>
+            <span class="chevron">›</span>
+            <small data-i18n="donateTipsHint">Ready-made tip page with minimal setup</small>
+          </button>
+          <button class="donation-method" type="button" data-donate="boosty">
+            <b data-i18n="donateBoosty">Boosty</b>
+            <span class="chevron">›</span>
+            <small data-i18n="donateBoostyHint">If you want a page and recurring support</small>
+          </button>
+        </div>
+        <div class="donate-caption" data-i18n="donateIntl">For an international audience</div>
+        <div class="donation-methods">
+          <button class="donation-method" type="button" data-donate="kofi">
+            <b data-i18n="donateKofi">Ko-fi</b>
+            <span class="chevron">›</span>
+            <small data-i18n="donateKofiHint">Great if you can receive via Stripe/PayPal</small>
+          </button>
+        </div>
+        <p class="donate-setup" data-i18n="donateSetup">Links are configured in js/config.js</p>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="sheet" id="settingsSheet">
+        <div class="sheet-handle"></div>
+        <h3 data-i18n="settingsTitle">Settings</h3>
+        <p data-i18n="settingsLead">Tune quiet feedback to your taste.</p>
+        <div class="setting-row">
+          <span data-i18n="haptic">Haptic feedback</span>
+          <button class="switch on" data-setting="haptic"></button>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="shuffle">New thought after a mark</span>
+          <button class="switch on" data-setting="shuffle"></button>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="language">Language</span>
+          <div
+            class="language-options"
+            style="width: min(180px, 48vw); grid-template-columns: 1fr 1fr"
+          >
+            <button class="option selected" data-lang-choice="ru">RU</button>
+            <button class="option" data-lang-choice="en">EN</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="resetMarks">Delete my marks</span>
+          <button class="danger" id="resetData" data-i18n="reset">Reset</button>
         </div>
       </section>
 
-      <p class="question">Кто управлял в этот раз?</p>
-      <div class="actions">
-        <button class="action me" data-mark="me">
-          <span class="plus">+</span><b>Я</b>
-        </button>
-        <button class="action nafs" data-mark="nafs">
-          <span class="plus">+</span><b>Нафс</b>
-        </button>
-      </div>
-      <button class="undo" id="undo">Отменить последнюю отметку</button>
-    </section>
-
-    <section class="page" id="historyPage">
-      <header class="topbar">
-        <button class="icon-button back" id="backHome" aria-label="Назад">←</button>
-        <div class="brand">История</div>
-        <div></div>
-      </header>
-      <div class="history-head">
-        <span class="overline">Зеркало выбора</span>
-        <h2 id="historyTitle">Сегодня</h2>
-      </div>
-      <nav class="periods" aria-label="Период истории">
-        <button class="period active" data-period="day">День</button>
-        <button class="period" data-period="week">Неделя</button>
-        <button class="period" data-period="month">Месяц</button>
-        <button class="period" data-period="year">Год</button>
-      </nav>
-      <div class="history-summary">
-        <div class="summary-item"><span>Я</span><strong id="sumMe">0</strong></div>
-        <div class="summary-item"><span>Баланс</span><strong id="sumDelta">0</strong></div>
-        <div class="summary-item"><span>Нафс</span><strong id="sumNafs">0</strong></div>
-      </div>
-      <section class="chart-card">
-        <div class="chart-title"><span id="chartCaption">Выборы за сегодня</span><span id="chartTotal">0 отметок</span></div>
-        <div class="chart" id="chart"></div>
-        <div class="legend"><span><i></i>Я</span><span><i></i>Нафс</span></div>
+      <section class="sheet" id="themeSheet">
+        <div class="sheet-handle"></div>
+        <h3 data-i18n="themeTitle">Theme</h3>
+        <p data-i18n="themeLead">Choose the mood of the space.</p>
+        <div class="theme-options">
+          <button class="option selected" data-theme-choice="light" data-i18n="light">Light</button>
+          <button class="option" data-theme-choice="dark" data-i18n="dark">Dark</button>
+          <button class="option" data-theme-choice="system" data-i18n="system">System</button>
+        </div>
       </section>
-      <div class="history-note" id="historyNote"></div>
-    </section>
 
-    <div class="scrim" id="scrim"></div>
-    <aside class="drawer" id="drawer" aria-label="Меню">
-      <div class="drawer-top">
-        <div class="drawer-logo">Nafs <span>نَفْس</span></div>
-        <button class="icon-button" id="closeMenu" aria-label="Закрыть меню">×</button>
-      </div>
-      <p class="drawer-caption">Пространство внимания</p>
-      <nav class="menu-list">
-        <button class="menu-item" data-menu="history">
-          <span class="menu-icon">↗</span><span><b>История</b><small>день, неделя, месяц, год</small></span><span class="chevron">›</span>
+      <section class="sheet" id="installSheet">
+        <div class="sheet-handle"></div>
+        <h3 data-i18n="installTitle">Add to Home Screen</h3>
+        <p id="installLead" data-i18n="installLead">
+          Add Nafs to your home screen — it opens without the browser chrome.
+        </p>
+        <div class="install-steps" id="installSteps"></div>
+        <button class="primary" id="installPrimary" type="button" data-i18n="install">
+          Install
         </button>
-        <button class="menu-item" data-menu="donate">
-          <span class="menu-icon">♡</span><span><b>Пожертвовать</b><small>поддержать развитие</small></span><span class="chevron">›</span>
-        </button>
-        <button class="menu-item" data-menu="settings">
-          <span class="menu-icon">⌁</span><span><b>Настройки</b><small>звук, вибрация и данные</small></span><span class="chevron">›</span>
-        </button>
-        <button class="menu-item" data-menu="theme">
-          <span class="menu-icon">◐</span><span><b>Тема</b><small id="themeMenuCaption">светлая</small></span><span class="chevron">›</span>
-        </button>
-        <button class="menu-item" data-menu="install">
-          <span class="menu-icon">↓</span><span><b>На экран Домой</b><small id="installMenuCaption">установить приложение</small></span><span class="chevron">›</span>
-        </button>
-      </nav>
-      <p class="drawer-quote" id="drawerQuote"></p>
-    </aside>
+      </section>
 
-    <section class="sheet" id="donateSheet">
-      <div class="sheet-handle"></div>
-      <h3>Поддержать Nafs</h3>
-      <p>Помоги приложению оставаться спокойным, независимым и без рекламы.</p>
-      <div class="donation-options">
-        <button class="option">99 ₽</button><button class="option selected">299 ₽</button><button class="option">599 ₽</button>
-      </div>
-      <button class="primary" data-demo-action="Спасибо за намерение поддержать">Пожертвовать 299 ₽</button>
-    </section>
+      <div class="toast" id="toast"></div>
+    </main>
 
-    <section class="sheet" id="settingsSheet">
-      <div class="sheet-handle"></div>
-      <h3>Настройки</h3>
-      <p>Настрой спокойную обратную связь под себя.</p>
-      <div class="setting-row"><span>Тактильный отклик</span><button class="switch on" data-setting="haptic"></button></div>
-      <div class="setting-row"><span>Новая мысль после отметки</span><button class="switch on" data-setting="shuffle"></button></div>
-      <div class="setting-row"><span>Удалить мои отметки</span><button class="danger" id="resetData">Сбросить</button></div>
-    </section>
-
-    <section class="sheet" id="themeSheet">
-      <div class="sheet-handle"></div>
-      <h3>Тема</h3>
-      <p>Выбери настроение пространства.</p>
-      <div class="theme-options">
-        <button class="option selected" data-theme-choice="light">Светлая</button>
-        <button class="option" data-theme-choice="dark">Тёмная</button>
-        <button class="option" data-theme-choice="system">Системная</button>
-      </div>
-    </section>
-
-    <section class="sheet" id="installSheet">
-      <div class="sheet-handle"></div>
-      <h3>На экран Домой</h3>
-      <p id="installLead">Добавь Nafs на главный экран — откроется без браузерной рамки.</p>
-      <div class="install-steps" id="installSteps"></div>
-      <button class="primary" id="installPrimary" type="button">Установить</button>
-    </section>
-
-    <div class="toast" id="toast"></div>
-  </main>
-
-  <script>
-    const STORAGE = "nafs.merged.v1";
-    const MOTIVATIONS = [
-      ["Маленькая победа над собой.", "Большие перемены начинаются с одного честного выбора."],
-      ["Остановись на один вдох.", "Иногда одной паузы достаточно, чтобы вернуть себе выбор."],
-      ["Ты сильнее мгновения.", "Желание проходит. Твоё решение остаётся."],
-      ["Не идеально. Осознанно.", "Сегодня важна не безошибочность, а возвращение к себе."],
-      ["Выбери то, что останется.", "Короткое удовольствие не должно решать за твоё будущее."],
-      ["Тишина тоже действие.", "Не каждый импульс заслуживает твоего ответа."],
-      ["Один выбор — уже путь.", "Не жди большого подвига. Начни с ближайшего решения."],
-      ["Сначала намерение.", "Напомни себе, ради чего ты хочешь устоять."],
-      ["Мягко, но твёрдо.", "Не ругай себя. Просто снова возьми направление."],
-      ["Ты можешь не спешить.", "Импульс торопит. Осознанность даёт время."],
-      ["Вернись в этот момент.", "Прошлую уступку не изменить, следующий выбор ещё твой."],
-      ["Победа любит тишину.", "Не обязательно рассказывать. Достаточно сделать."],
-      ["Сложно — не значит невозможно.", "Сопротивление часто появляется рядом с ростом."],
-      ["Сохрани своё утро.", "Первый осознанный выбор задаёт тон всему дню."],
-      ["Не корми привычку.", "То, чему ты уступаешь часто, становится сильнее."],
-      ["Будь честен и продолжай.", "Честная отметка полезнее красивой статистики."],
-      ["Твоё «нет» имеет вес.", "Каждый отказ от лишнего укрепляет свободу."],
-      ["Не спорь с импульсом.", "Заметь его, дай пройти и выбери сам."],
-      ["Сделай легче будущему себе.", "Поступи сейчас так, чтобы потом поблагодарить себя."],
-      ["Сегодня достаточно одного.", "Одна настоящая победа важнее десяти обещаний."],
-      ["Дисциплина — это забота.", "Ты ограничиваешь не себя, а то, что управляет тобой."],
-      ["Сила растёт незаметно.", "Каждое маленькое удержание складывается в характер."],
-      ["Не начинай сначала.", "Ты уже в пути. Просто продолжи с этого места."],
-      ["Дай желанию имя.", "Когда ты видишь импульс ясно, он теряет часть власти."],
-      ["Пауза возвращает свободу.", "Между желанием и действием всегда есть пространство."],
-      ["Смотри дальше минуты.", "Как этот выбор будет ощущаться вечером?"],
-      ["Ты не обязан соглашаться.", "Мысль и желание — ещё не команда."],
-      ["Спокойствие сильнее рывка.", "Устойчивая маленькая практика меняет больше героизма."],
-      ["Выбери уважение к себе.", "Сдержать слово самому себе — особая форма достоинства."],
-      ["Пусть будет трудно.", "Дискомфорт не опасен. Иногда он просто цена роста."],
-      ["Не считай уступку концом.", "Она лишь точка данных, а не приговор."],
-      ["Намерение живёт в поступке.", "То, что важно, становится видимым через выбор."],
-      ["Освободи внимание.", "Не отдавай весь день одному мимолётному желанию."],
-      ["Держи направление.", "Скорость может меняться. Курс остаётся твоим."],
-      ["Сначала самое верное.", "Удобное можно сделать потом. Важное — сейчас."],
-      ["Ты уже заметил.", "Осознание импульса — половина победы."],
-      ["Сделай шаг меньше.", "Если трудно отказаться навсегда, откажись на десять минут."],
-      ["Ничего не доказывай.", "Эта победа нужна не людям, а твоему сердцу."],
-      ["Пусть выбор будет чистым.", "Без стыда за прошлое и гордости за счёт."],
-      ["Начни с благодарности.", "Когда достаточно уже есть, лишнее теряет силу."],
-      ["Береги внутренний порядок.", "Не каждое желание заслуживает места в твоём дне."],
-      ["Свобода требует практики.", "Каждый раз, когда выбираешь сам, она становится крепче."],
-      ["Удержаться — тоже движение.", "Не делать лишнего иногда важнее нового действия."],
-      ["Сделай выбор один раз.", "Не возвращайся к торгу после принятого решения."],
-      ["Будь рядом с собой.", "Не бросай себя именно в тот момент, когда стало трудно."],
-      ["День ещё не закончен.", "Баланс можно изменить следующим честным выбором."],
-      ["Терпение имеет форму.", "Сегодня оно может быть одним спокойным «нет»."],
-      ["Смотри без осуждения.", "Ясность помогает меняться лучше, чем стыд."],
-      ["Твоё внимание — аманат.", "Отдавай его тому, что действительно имеет значение."],
-      ["Пусть сердце ведёт.", "Не позволяй самому громкому желанию стать главным."]
-    ];
-
-    const $ = id => document.getElementById(id);
-    const dayKey = (date = new Date()) => {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2,"0");
-      const d = String(date.getDate()).padStart(2,"0");
-      return `${y}-${m}-${d}`;
-    };
-    const defaults = {
-      days: {},
-      last: null,
-      settings: { haptic: true, shuffle: true },
-      theme: "light",
-      motivation: Math.floor(Math.random() * MOTIVATIONS.length)
-    };
-    let state;
-    try { state = { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE) || "{}") } }
-    catch { state = structuredClone(defaults) }
-    state.settings = { ...defaults.settings, ...(state.settings || {}) };
-
-    function save() { localStorage.setItem(STORAGE, JSON.stringify(state)) }
-    function today() {
-      const key = dayKey();
-      state.days[key] ||= { me: 0, nafs: 0 };
-      return state.days[key];
-    }
-    function plural(n) {
-      const n10 = n % 10, n100 = n % 100;
-      if (n10 === 1 && n100 !== 11) return "отметка";
-      if (n10 >= 2 && n10 <= 4 && !(n100 >= 12 && n100 <= 14)) return "отметки";
-      return "отметок";
-    }
-    function showToast(text) {
-      const toast = $("toast");
-      toast.textContent = text;
-      toast.classList.add("show");
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1300);
-    }
-    function renderSpeech(animate = false) {
-      const [title, body] = MOTIVATIONS[state.motivation % MOTIVATIONS.length];
-      if (animate) {
-        $("speechTitle").style.animation = "none";
-        $("speechBody").style.animation = "none";
-        void $("speechTitle").offsetWidth;
-        $("speechTitle").style.animation = "";
-        $("speechBody").style.animation = "";
-      }
-      $("speechTitle").textContent = title;
-      $("speechBody").textContent = body;
-      $("drawerQuote").textContent = title + " " + body;
-    }
-    function nextSpeech() {
-      let next;
-      do { next = Math.floor(Math.random() * MOTIVATIONS.length) } while (next === state.motivation);
-      state.motivation = next;
-      save();
-      renderSpeech(true);
-    }
-    function renderHome() {
-      const { me, nafs } = today();
-      const total = me + nafs;
-      const diff = me - nafs;
-      const advantage = total ? diff / total : 0;
-      const greenShare = (advantage + 1) / 2;
-      const mix = (from, to, amount) => from.map((value,index) => Math.round(value + (to[index]-value)*amount));
-      const start = mix([5,6,5],[28,100,63],greenShare);
-      const end = mix([13,14,13],[58,139,91],greenShare);
-      $("meCount").textContent = me;
-      $("nafsCount").textContent = nafs;
-      $("delta").textContent = Math.abs(diff);
-      $("deltaCaption").textContent = diff === 0 ? "поровну" : diff > 0 ? "в твою пользу" : "в пользу нафса";
-      $("cardStatus").textContent = total === 0 ? "тишина" : diff > 0 ? "ты впереди" : diff < 0 ? "можно вернуть" : "равный счёт";
-      $("balanceFill").style.width = `${total ? me / total * 100 : 50}%`;
-      $("balanceCard").style.background =
-        `linear-gradient(145deg,rgb(${start.join(",")}),rgb(${end.join(",")}))`;
-    }
-    function mark(side) {
-      const key = dayKey();
-      const current = today();
-      current[side]++;
-      state.last = { key, side };
-      save();
-      renderHome();
-      $("delta").classList.remove("pop");
-      void $("delta").offsetWidth;
-      $("delta").classList.add("pop");
-      if (state.settings.haptic) navigator.vibrate?.(12);
-      showToast(side === "me" ? "Победа за тобой" : "Честно отмечено");
-      if (state.settings.shuffle) nextSpeech();
-    }
-    function undo() {
-      if (!state.last) return showToast("Нечего отменять");
-      const { key, side } = state.last;
-      if (state.days[key]?.[side] > 0) state.days[key][side]--;
-      state.last = null;
-      save();
-      renderHome();
-      showToast("Последняя отметка отменена");
-    }
-
-    const monthNames = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
-    const weekNames = ["вс","пн","вт","ср","чт","пт","сб"];
-    function valuesForDate(date) {
-      return state.days[dayKey(date)] || { me: 0, nafs: 0 };
-    }
-    function buildHistory(period) {
-      const now = new Date();
-      if (period === "day") {
-        const val = valuesForDate(now);
-        return { title:"Сегодня", caption:"Выборы за сегодня", groups:[{ label:"сегодня", ...val }] };
-      }
-      if (period === "week") {
-        const groups = [];
-        for (let i=6;i>=0;i--) {
-          const d = new Date(now); d.setDate(now.getDate()-i);
-          groups.push({ label:weekNames[d.getDay()], ...valuesForDate(d) });
-        }
-        return { title:"Эта неделя", caption:"Последние семь дней", groups };
-      }
-      if (period === "month") {
-        const groups = [];
-        for (let start=27;start>=0;start-=7) {
-          let me=0, nafs=0;
-          for (let j=0;j<7;j++) {
-            const d = new Date(now); d.setDate(now.getDate()-(start-j));
-            const v=valuesForDate(d); me+=v.me; nafs+=v.nafs;
-          }
-          groups.push({ label:`${Math.max(1,now.getDate()-start)}–${Math.max(1,now.getDate()-start+6)}`, me, nafs });
-        }
-        return { title:"Этот месяц", caption:"Недели текущего периода", groups };
-      }
-      const groups = [];
-      for (let offset=11;offset>=0;offset--) {
-        const month = new Date(now.getFullYear(),now.getMonth()-offset,1);
-        const days = new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
-        let me=0,nafs=0;
-        for (let i=1;i<=days;i++) {
-          const d=new Date(month.getFullYear(),month.getMonth(),i);
-          if (d>now) break;
-          const v=valuesForDate(d); me+=v.me; nafs+=v.nafs;
-        }
-        groups.push({label:monthNames[month.getMonth()],me,nafs});
-      }
-      return { title:"Последний год", caption:"Динамика по месяцам", groups };
-    }
-    function renderHistory(period = "day") {
-      const data = buildHistory(period);
-      const totalMe = data.groups.reduce((sum,v)=>sum+v.me,0);
-      const totalNafs = data.groups.reduce((sum,v)=>sum+v.nafs,0);
-      const total = totalMe + totalNafs;
-      const delta = totalMe - totalNafs;
-      const max = Math.max(1,...data.groups.flatMap(v=>[v.me,v.nafs]));
-      $("historyTitle").textContent = data.title;
-      $("chartCaption").textContent = data.caption;
-      $("chartTotal").textContent = `${total} ${plural(total)}`;
-      $("sumMe").textContent = totalMe;
-      $("sumNafs").textContent = totalNafs;
-      $("sumDelta").textContent = delta > 0 ? `+${delta}` : delta;
-      $("sumDelta").style.color = delta > 0 ? "var(--green)" : "var(--muted)";
-      $("historyNote").textContent = total === 0
-        ? "Пока здесь тихо. Первая честная отметка уже станет началом истории."
-        : delta > 0
-          ? "Ты чаще выбирал осознанность. Заметь это спокойно и продолжай держать направление."
-          : delta < 0
-            ? "Статистика не судит тебя. Она лишь показывает, где следующий выбор особенно важен."
-            : "Баланс равный. Следующий выбор может изменить направление.";
-      $("chart").innerHTML = data.groups.map(group => `
-        <div class="chart-group">
-          <div class="bars">
-            <i class="bar me" style="height:${Math.max(2,group.me/max*100)}%"></i>
-            <i class="bar nafs" style="height:${Math.max(2,group.nafs/max*100)}%"></i>
-          </div>
-          <span class="chart-label">${group.label}</span>
-        </div>`).join("");
-    }
-
-    function openPage(name) {
-      document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===name+"Page"));
-      if (name==="history") renderHistory(document.querySelector(".period.active").dataset.period);
-    }
-    function openMenu() { $("drawer").classList.add("open"); $("scrim").classList.add("open") }
-    function closeLayers() {
-      $("drawer").classList.remove("open");
-      document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("open"));
-      $("scrim").classList.remove("open");
-    }
-    function openSheet(id) {
-      $("drawer").classList.remove("open");
-      $(id).classList.add("open");
-      $("scrim").classList.add("open");
-    }
-    function applyTheme(choice) {
-      state.theme = choice;
-      const actual = choice === "system"
-        ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-        : choice;
-      document.documentElement.dataset.theme = actual;
-      document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("selected",b.dataset.themeChoice===choice));
-      $("themeMenuCaption").textContent = choice === "dark" ? "тёмная" : choice === "system" ? "системная" : "светлая";
-      document.querySelector('meta[name="theme-color"]').content = actual === "dark" ? "#101713" : "#e8e5d9";
-      save();
-    }
-
-    document.querySelectorAll("[data-mark]").forEach(b=>b.addEventListener("click",()=>mark(b.dataset.mark)));
-    document.querySelectorAll(".period").forEach(b=>b.addEventListener("click",()=>{
-      document.querySelectorAll(".period").forEach(x=>x.classList.remove("active"));
-      b.classList.add("active"); renderHistory(b.dataset.period);
-    }));
-    document.querySelectorAll("[data-menu]").forEach(b=>b.addEventListener("click",()=>{
-      const action=b.dataset.menu;
-      if(action==="history"){ closeLayers(); openPage("history") }
-      else openSheet(action+"Sheet");
-    }));
-    document.querySelectorAll(".donation-options .option").forEach(b=>b.addEventListener("click",()=>{
-      document.querySelectorAll(".donation-options .option").forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected");
-      document.querySelector("#donateSheet .primary").textContent=`Пожертвовать ${b.textContent}`;
-    }));
-    document.querySelectorAll("[data-setting]").forEach(b=>b.addEventListener("click",()=>{
-      const key=b.dataset.setting; state.settings[key]=!state.settings[key];
-      b.classList.toggle("on",state.settings[key]); save();
-    }));
-    document.querySelectorAll("[data-theme-choice]").forEach(b=>b.addEventListener("click",()=>applyTheme(b.dataset.themeChoice)));
-    document.querySelectorAll("[data-demo-action]").forEach(b=>b.addEventListener("click",()=>{closeLayers();showToast(b.dataset.demoAction)}));
-    $("openMenu").addEventListener("click",openMenu);
-    $("closeMenu").addEventListener("click",closeLayers);
-    $("scrim").addEventListener("click",closeLayers);
-    $("backHome").addEventListener("click",()=>openPage("home"));
-    $("speech").addEventListener("click",nextSpeech);
-    $("undo").addEventListener("click",undo);
-    $("resetData").addEventListener("click",()=>{
-      state.days={};state.last=null;save();renderHome();closeLayers();showToast("Отметки удалены");
-    });
-
-    // PWA install
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isAndroid = /android/i.test(navigator.userAgent);
-    let deferredPrompt = null;
-
-    function renderInstallCopy() {
-      const steps = $("installSteps");
-      const primary = $("installPrimary");
-      if (isStandalone) {
-        $("installLead").textContent = "Nafs уже установлен и открыт как приложение.";
-        steps.innerHTML = `<div><b>Готово</b>Можно пользоваться с домашнего экрана.</div>`;
-        primary.hidden = true;
-        $("installMenuCaption").textContent = "уже установлено";
-        $("installBanner").classList.remove("show");
-        return;
-      }
-      primary.hidden = false;
-      if (isIos) {
-        $("installLead").textContent = "На iPhone установка идёт через Safari.";
-        steps.innerHTML = `
-          <div><b>1. Открой в Safari</b>PWA ставится именно из Safari, не из Chrome.</div>
-          <div><b>2. Нажми «Поделиться»</b>Кнопка внизу или сверху экрана.</div>
-          <div><b>3. «На экран „Домой“»</b>Подтверди — появится иконка Nafs.</div>`;
-        primary.textContent = "Понятно";
-        primary.onclick = () => { closeLayers(); showToast("Safari → Поделиться → На экран Домой"); };
-      } else if (deferredPrompt) {
-        $("installLead").textContent = "Можно поставить как обычное приложение.";
-        steps.innerHTML = `<div><b>Один шаг</b>Нажми «Установить» — Nafs появится на домашнем экране.</div>`;
-        primary.textContent = "Установить";
-        primary.onclick = async () => {
-          deferredPrompt.prompt();
-          const result = await deferredPrompt.userChoice;
-          deferredPrompt = null;
-          closeLayers();
-          showToast(result.outcome === "accepted" ? "Добавляем на экран" : "Можно установить позже");
-          updateInstallVisibility();
-        };
-      } else {
-        $("installLead").textContent = "Добавь ярлык через меню браузера.";
-        steps.innerHTML = isAndroid
-          ? `<div><b>Меню браузера</b>⋮ → «Установить приложение» или «Добавить на главный экран».</div>`
-          : `<div><b>Меню браузера</b>Найди «Install app» / «Add to Home Screen».</div>`;
-        primary.textContent = "Понятно";
-        primary.onclick = () => closeLayers();
-      }
-    }
-
-    function updateInstallVisibility() {
-      renderInstallCopy();
-      const dismissed = localStorage.getItem("nafs.install.dismissed") === "1";
-      const showBanner = !isStandalone && !dismissed && (Boolean(deferredPrompt) || isIos || isAndroid);
-      $("installBanner").classList.toggle("show", showBanner);
-    }
-
-    window.addEventListener("beforeinstallprompt", (event) => {
-      event.preventDefault();
-      deferredPrompt = event;
-      updateInstallVisibility();
-    });
-    window.addEventListener("appinstalled", () => {
-      deferredPrompt = null;
-      showToast("Nafs на домашнем экране");
-      updateInstallVisibility();
-    });
-    $("installBannerBtn").addEventListener("click", () => openSheet("installSheet"));
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
-    }
-
-    const now=new Date();
-    $("todayLabel").innerHTML=`${now.getDate()} ${monthNames[now.getMonth()]}<br>${weekNames[now.getDay()]}`;
-    applyTheme(state.theme);
-    renderSpeech();
-    renderHome();
-    renderHistory();
-    updateInstallVisibility();
-  </script>
-</body>
+    <script src="./js/config.js"></script>
+    <script src="./js/i18n.js"></script>
+    <script src="./js/motivations.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
 </html>
