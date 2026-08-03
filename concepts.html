@@ -204,7 +204,11 @@
     .sabr-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px }
     .sabr .tap-button { min-height: 100px; padding: 15px; border-radius: 50% 50% 16px 16px; text-align: left }
     .sabr .tap-button.me { background: #a77a39; color: #fffaf0 }
-    .sabr .tap-button.nafs { background: #d6d0c3; color: #383831 }
+    .sabr .tap-button.nafs {
+      background: rgba(39,36,29,.045);
+      color: #7d776d;
+      box-shadow: inset 0 0 0 1px rgba(39,36,29,.1);
+    }
     .sabr .tap-button b { display: block; margin-top: 25px; font-family: "Marcellus"; font-size: 20px; font-weight: 400 }
     .sabr .tap-button span { font-size: 9px; opacity: .65 }
 
@@ -247,6 +251,10 @@
       background: transparent; color: #10110d; text-align: left;
     }
     .focus .tap-button.me { background: #10110d; color: #f3ff52 }
+    .focus .tap-button.nafs {
+      color: rgba(16,17,13,.58);
+      border-color: rgba(16,17,13,.38);
+    }
     .focus .tap-button .plus { display: block; font-size: 20px; line-height: 1 }
     .focus .tap-button b { display: block; margin-top: 17px; font-size: 13px; text-transform: uppercase }
     .focus-note { margin: 10px 0 0; font-size: 8px; font-weight: 600; text-align: center; text-transform: uppercase }
@@ -298,6 +306,11 @@
       border: 1px solid rgba(245,232,206,.13); backdrop-filter: blur(8px);
     }
     .layl .tap-button.me { border-color: rgba(223,173,93,.35); background: rgba(223,173,93,.09) }
+    .layl .tap-button.nafs {
+      color: rgba(245,232,206,.55);
+      border-color: rgba(245,232,206,.07);
+      background: rgba(255,255,255,.018);
+    }
     .layl .tap-button span { display: block; color: rgba(245,232,206,.45); font-size: 8px }
     .layl .tap-button b { display: block; margin-top: 16px; font-family: "Marcellus"; font-size: 16px; font-weight: 400 }
 
@@ -340,7 +353,11 @@
     .clear-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px }
     .clear .tap-button { min-height: 93px; padding: 13px; border-radius: 18px; text-align: left }
     .clear .tap-button.me { background: #f0bd60; color: #302514 }
-    .clear .tap-button.nafs { background: #dde8df; color: #234337 }
+    .clear .tap-button.nafs {
+      background: transparent;
+      color: #7e8b84;
+      box-shadow: inset 0 0 0 1px #dce1dc;
+    }
     .clear .tap-button .circle { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 15px }
     .clear .tap-button b { display: block; margin-top: 16px; font-size: 12px }
     .clear .tap-button span:last-child { display: block; margin-top: 2px; font-size: 8px; opacity: .6 }
