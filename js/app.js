@@ -547,6 +547,16 @@
   });
 
   if ("serviceWorker" in navigator) {
+    let reloading = false;
+    const reloadOnce = () => {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    };
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (event.data?.type === "NAFS_SW_UPDATED") reloadOnce();
+    });
+    navigator.serviceWorker.addEventListener("controllerchange", reloadOnce);
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }
 
