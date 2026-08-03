@@ -2,7 +2,7 @@
  * Service worker for Nafs PWA.
  * Strategy: cache-first for app shell, then network refresh.
  */
-const CACHE = "nafs-v8";
+const CACHE = "nafs-v9";
 const ASSETS = [
   "./",
   "./index.html",
