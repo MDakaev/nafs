@@ -757,6 +757,28 @@
         font-size: 10px;
         line-height: 1.4;
       }
+      .reset-block {
+        margin-top: 8px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      .reset-periods {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        margin: 10px 0 12px;
+      }
+      .reset-periods .option {
+        padding: 10px 4px;
+        font-size: 10px;
+      }
+      .reset-action {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(154, 76, 71, 0.28);
+        background: rgba(154, 76, 71, 0.08);
+      }
       .option {
         padding: 14px 8px;
         border: 1px solid var(--line);
@@ -976,9 +998,6 @@
           <span class="arabic" data-i18n="sabr">صَبْر</span>
           <h1 id="speechTitle"></h1>
           <p id="speechBody"></p>
-          <span class="shuffle-hint"
-            >↻ <span data-i18n="anotherThought">another thought</span></span
-          >
         </div>
 
         <section class="balance-card" id="balanceCard">
@@ -1109,36 +1128,17 @@
       <section class="sheet" id="donateSheet">
         <div class="sheet-handle"></div>
         <h3 data-i18n="donateTitle">Support Nafs</h3>
-        <p data-i18n="donateLead">
-          Pick a convenient way. Support helps keep Nafs calm, ad-free, and unhurried.
-        </p>
-        <div class="donate-caption" data-i18n="donateBest">Best for starting</div>
+        <p data-i18n="donateLead">Support helps keep Nafs calm, ad-free, and unhurried.</p>
         <div class="donation-methods">
-          <button class="donation-method" type="button" data-donate="sbp">
-            <b data-i18n="donateSbp">SBP / bank transfer</b>
-            <span class="chevron">›</span>
-            <small data-i18n="donateSbpHint">Most familiar for users in Russia</small>
-          </button>
           <button class="donation-method" type="button" data-donate="tips">
-            <b data-i18n="donateTips">CloudTips / tips</b>
+            <b data-i18n="donateTips">CloudTips</b>
             <span class="chevron">›</span>
-            <small data-i18n="donateTipsHint">Ready-made tip page with minimal setup</small>
-          </button>
-          <button class="donation-method" type="button" data-donate="boosty">
-            <b data-i18n="donateBoosty">Boosty</b>
-            <span class="chevron">›</span>
-            <small data-i18n="donateBoostyHint">If you want a page and recurring support</small>
+            <small data-i18n="donateTipsHint">Open the tip page</small>
           </button>
         </div>
-        <div class="donate-caption" data-i18n="donateIntl">For an international audience</div>
-        <div class="donation-methods">
-          <button class="donation-method" type="button" data-donate="kofi">
-            <b data-i18n="donateKofi">Ko-fi</b>
-            <span class="chevron">›</span>
-            <small data-i18n="donateKofiHint">Great if you can receive via Stripe/PayPal</small>
-          </button>
-        </div>
-        <p class="donate-setup" data-i18n="donateSetup">Links are configured in js/config.js</p>
+        <button class="primary" type="button" data-donate="tips" data-i18n="donateCta">
+          Support via CloudTips
+        </button>
       </section>
 
       <!-- SETTINGS -->
@@ -1151,10 +1151,6 @@
           <button class="switch on" data-setting="haptic"></button>
         </div>
         <div class="setting-row">
-          <span data-i18n="shuffle">New thought after a mark</span>
-          <button class="switch on" data-setting="shuffle"></button>
-        </div>
-        <div class="setting-row">
           <span data-i18n="language">Language</span>
           <div
             class="language-options"
@@ -1164,9 +1160,28 @@
             <button class="option" data-lang-choice="en">EN</button>
           </div>
         </div>
-        <div class="setting-row">
-          <span data-i18n="resetMarks">Delete my marks</span>
-          <button class="danger" id="resetData" data-i18n="reset">Reset</button>
+        <div class="reset-block">
+          <div class="donate-caption" data-i18n="resetMarks">Delete my marks</div>
+          <div class="reset-periods" id="resetPeriods">
+            <button
+              class="option selected"
+              type="button"
+              data-reset-period="day"
+              data-i18n="resetDay"
+            >
+              Day
+            </button>
+            <button class="option" type="button" data-reset-period="week" data-i18n="resetWeek">
+              Week
+            </button>
+            <button class="option" type="button" data-reset-period="month" data-i18n="resetMonth">
+              Month
+            </button>
+            <button class="option" type="button" data-reset-period="all" data-i18n="resetAll">
+              All time
+            </button>
+          </div>
+          <button class="danger reset-action" id="resetData" data-i18n="reset">Reset</button>
         </div>
       </section>
 

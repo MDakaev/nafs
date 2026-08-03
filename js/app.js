@@ -30,10 +30,11 @@
   const defaults = {
     days: {},
     last: null,
-    settings: { haptic: true, shuffle: true },
+    settings: { haptic: true },
     theme: "light",
     lang: "ru",
     motivation: 0,
+    resetPeriod: "day",
   };
 
   let state;
@@ -162,7 +163,7 @@
     $("delta").classList.add("pop");
     if (state.settings.haptic) navigator.vibrate?.(12);
     showToast(side === "me" ? t("toastMe") : t("toastNafs"));
-    if (state.settings.shuffle) nextSpeech();
+    nextSpeech();
   }
 
   function undo() {
@@ -331,7 +332,41 @@
     refreshAll();
   }
 
-  /** Open a configured donation link, or explain that setup is still needed. */
+  /** Clear marks for a fixed period: day / week / month / all. */
+  function clearMarks(period) {
+    const now = new Date();
+    if (period === "all") {
+      state.days = {};
+      state.last = null;
+      return "toastReset";
+    }
+
+    const keep = {};
+    Object.entries(state.days).forEach(([key, value]) => {
+      const [y, m, d] = key.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      let remove = false;
+      if (period === "day") {
+        remove = key === dayKey(now);
+      } else if (period === "week") {
+        const oldest = new Date(now);
+        oldest.setHours(0, 0, 0, 0);
+        oldest.setDate(now.getDate() - 6);
+        remove = date >= oldest && date <= now;
+      } else if (period === "month") {
+        remove = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+      }
+      if (!remove) keep[key] = value;
+    });
+    state.days = keep;
+    if (state.last && !state.days[state.last.key]) state.last = null;
+    return period === "day"
+      ? "toastResetDay"
+      : period === "week"
+        ? "toastResetWeek"
+        : "toastResetMonth";
+  }
+
   function openDonation(kind) {
     const url = window.NAFS_CONFIG?.donations?.[kind];
     if (!url) {
@@ -408,6 +443,9 @@
     renderHome();
     renderHistory(document.querySelector(".period.active")?.dataset.period || "day");
     updateInstallVisibility();
+    document.querySelectorAll("[data-reset-period]").forEach((b) => {
+      b.classList.toggle("selected", b.dataset.resetPeriod === (state.resetPeriod || "day"));
+    });
     const now = new Date();
     const monthNames = t("months");
     const weekNames = t("week");
@@ -460,13 +498,25 @@
   $("backHome").addEventListener("click", () => openPage("home"));
   $("speech").addEventListener("click", nextSpeech);
   $("undo").addEventListener("click", undo);
+  document.querySelectorAll("[data-reset-period]").forEach((b) => {
+    b.addEventListener("click", () => {
+      state.resetPeriod = b.dataset.resetPeriod;
+      document.querySelectorAll("[data-reset-period]").forEach((x) => {
+        x.classList.toggle("selected", x.dataset.resetPeriod === state.resetPeriod);
+      });
+      save();
+    });
+  });
   $("resetData").addEventListener("click", () => {
-    state.days = {};
-    state.last = null;
+    const period = state.resetPeriod || "day";
+    const toastKey = clearMarks(period);
     save();
     renderHome();
+    if (document.querySelector("#historyPage")?.classList.contains("active")) {
+      renderHistory(document.querySelector(".period.active")?.dataset.period || "day");
+    }
     closeLayers();
-    showToast(t("toastReset"));
+    showToast(t(toastKey));
   });
   $("installBannerBtn").addEventListener("click", () => openSheet("installSheet"));
 

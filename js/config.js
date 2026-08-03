@@ -17,16 +17,14 @@ window.NAFS_CONFIG = {
      * CloudTips / Sber Tips style page.
      * Easy to open, good for one-tap support.
      */
+    /**
+     * CloudTips tip page — primary donation method for launch.
+     */
     tips: "https://pay.cloudtips.ru/p/ce29a1d6",
 
-    /**
-     * Boosty page if you want recurring support and a public profile.
-     */
+    // Reserved for later:
+    sbp: "",
     boosty: "",
-
-    /**
-     * Ko-fi for international supporters (works best if you can receive via Stripe/PayPal).
-     */
     kofi: "",
   },
 };
