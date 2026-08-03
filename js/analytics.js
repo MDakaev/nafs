@@ -68,14 +68,16 @@
     a.parentNode.insertBefore(k, a);
   })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=" + id, "ym");
 
+  // Matches official Metrika snippet options from the counter dashboard.
   window.ym(Number(id), "init", {
     ssr: true,
     clickmap: true,
-    trackLinks: true,
-    accurateTrackBounce: true,
-    webvisor: false,
+    ecommerce: "dataLayer",
     referrer: document.referrer,
     url: location.href,
+    accurateTrackBounce: true,
+    trackLinks: true,
+    webvisor: false,
   });
 
   // First paint context
