@@ -1,0 +1,9 @@
+.netlify/
+.DS_Store
+node_modules/
+.cache/
+dist/
+*.log
+.env
+.env.*
+!.env.example
