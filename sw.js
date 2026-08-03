@@ -1,4 +1,4 @@
-const CACHE = "nafs-v1";
+const CACHE = "nafs-v2";
 const ASSETS = [
   "./",
   "./index.html",

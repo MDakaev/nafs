@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#e8e5d9">
   <meta name="description" content="Счётчик маленьких побед над собой">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Nafs">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Nafs — маленькая победа над собой</title>
@@ -53,6 +53,7 @@
     }
     * { box-sizing: border-box }
     html, body { min-height: 100%; margin: 0 }
+    html { background: var(--paper) }
     body {
       min-height: 100vh;
       display: grid;
@@ -123,7 +124,7 @@
     .brand {
       text-align: center;
       font-family: var(--serif);
-      font-size: 20px;
+      font-size: 23px;
       letter-spacing: .01em;
     }
     .brand span { margin-left: 5px; color: var(--green); font-size: 11px }
@@ -163,8 +164,8 @@
     .speech p {
       margin: 9px 0 0;
       color: var(--muted);
-      font-size: 11px;
-      line-height: 1.5;
+      font-size: 13px;
+      line-height: 1.48;
       animation: speech-in .45s .05s ease both;
     }
     .speech .shuffle-hint {
@@ -187,9 +188,10 @@
       padding: 22px 20px 18px;
       overflow: hidden;
       border-radius: 27px;
-      background: var(--green);
+      background: linear-gradient(145deg, #173d2c, #285f45);
       color: #f6f4eb;
       box-shadow: var(--shadow);
+      transition: background .55s cubic-bezier(.2,.8,.2,1);
     }
     .balance-card::after {
       content: "";
@@ -258,18 +260,25 @@
     .question {
       margin: 0 0 11px;
       color: var(--muted);
-      font-size: 10px;
+      font-size: 13px;
+      line-height: 1.35;
     }
     .actions {
       flex: 0 0 auto;
       display: grid;
-      grid-template-columns: 1.08fr .92fr;
-      align-items: end;
+      grid-template-columns: repeat(2,minmax(0,1fr));
+      align-items: stretch;
       gap: 10px;
     }
     .action {
-      min-height: 128px;
+      width: 100%;
+      height: 122px;
+      min-width: 0;
+      min-height: 0;
       padding: 17px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       border: 0;
       cursor: pointer;
       text-align: left;
@@ -277,15 +286,14 @@
     }
     .action:active { transform: scale(.97); filter: brightness(1.05) }
     .action.me {
-      border-radius: 65px 65px 18px 18px;
+      border-radius: 58px 58px 18px 18px;
       background: var(--green-2);
       color: #fff;
       box-shadow: 0 13px 28px rgba(37,92,67,.17);
     }
     .action.nafs {
-      min-height: 116px;
       border: 1px solid var(--line);
-      border-radius: 55px 55px 18px 18px;
+      border-radius: 58px 58px 18px 18px;
       background: rgba(255,255,255,.08);
       color: var(--muted);
     }
@@ -302,9 +310,9 @@
     }
     .action b {
       display: block;
-      margin-top: 25px;
+      margin-top: 0;
       font-family: var(--serif);
-      font-size: 21px;
+      font-size: 24px;
       font-weight: 400;
     }
     .action small { display: block; margin-top: 3px; font-size: 9px; opacity: .62 }
@@ -588,15 +596,26 @@
     @media (min-width: 520px) {
       .app-shell { border-radius: 34px; border: 1px solid rgba(255,255,255,.12) }
     }
+    @media (max-width: 519px) {
+      body { background: var(--paper) }
+      .app-shell {
+        width: 100%;
+        height: 100dvh;
+        min-height: 100svh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .page {
+        padding-top: calc(5px + env(safe-area-inset-top));
+      }
+    }
     @media (max-height: 740px) {
       .speech { min-height: 100px; padding-top: 20px }
       .speech h1 { font-size: 28px }
       .balance-card { padding-block: 17px 15px; margin-bottom: 12px }
       .balance-main { margin-block: 12px 16px }
       .balance-main strong { font-size: 52px }
-      .action { min-height: 103px }
-      .action.nafs { min-height: 94px }
-      .action b { margin-top: 17px }
+      .action { height: 103px }
     }
   </style>
 </head>
@@ -625,7 +644,7 @@
         <span class="shuffle-hint">↻ другая мысль</span>
       </div>
 
-      <section class="balance-card">
+      <section class="balance-card" id="balanceCard">
         <div class="card-top"><span>Баланс сегодня</span><span id="cardStatus">тишина</span></div>
         <div class="balance-main"><strong id="delta">0</strong><span id="deltaCaption">поровну</span></div>
         <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
@@ -635,13 +654,13 @@
         </div>
       </section>
 
-      <p class="question">Кто победил в последнем выборе?</p>
+      <p class="question">Кто управлял в этот раз?</p>
       <div class="actions">
         <button class="action me" data-mark="me">
-          <span class="plus">+</span><b>Победил я</b><small>удержал себя</small>
+          <span class="plus">+</span><b>Я</b>
         </button>
         <button class="action nafs" data-mark="nafs">
-          <span class="plus">+</span><b>Победил нафс</b><small>честно отметил</small>
+          <span class="plus">+</span><b>Нафс</b>
         </button>
       </div>
       <button class="undo" id="undo">Отменить последнюю отметку</button>
@@ -861,12 +880,19 @@
       const { me, nafs } = today();
       const total = me + nafs;
       const diff = me - nafs;
+      const advantage = total ? diff / total : 0;
+      const greenShare = (advantage + 1) / 2;
+      const mix = (from, to, amount) => from.map((value,index) => Math.round(value + (to[index]-value)*amount));
+      const start = mix([5,6,5],[28,100,63],greenShare);
+      const end = mix([13,14,13],[58,139,91],greenShare);
       $("meCount").textContent = me;
       $("nafsCount").textContent = nafs;
       $("delta").textContent = Math.abs(diff);
       $("deltaCaption").textContent = diff === 0 ? "поровну" : diff > 0 ? "в твою пользу" : "в пользу нафса";
       $("cardStatus").textContent = total === 0 ? "тишина" : diff > 0 ? "ты впереди" : diff < 0 ? "можно вернуть" : "равный счёт";
       $("balanceFill").style.width = `${total ? me / total * 100 : 50}%`;
+      $("balanceCard").style.background =
+        `linear-gradient(145deg,rgb(${start.join(",")}),rgb(${end.join(",")}))`;
     }
     function mark(side) {
       const key = dayKey();
@@ -894,31 +920,14 @@
 
     const monthNames = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
     const weekNames = ["вс","пн","вт","ср","чт","пт","сб"];
-    function seededValue(date, side) {
-      const seed = Number(dayKey(date).replaceAll("-","")) + (side === "me" ? 17 : 43);
-      const wave = Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1;
-      return Math.floor(wave * (side === "me" ? 6 : 4));
-    }
     function valuesForDate(date) {
-      const stored = state.days[dayKey(date)];
-      if (stored) return stored;
-      if (dayKey(date) === dayKey()) return { me: 0, nafs: 0 };
-      return { me: seededValue(date,"me"), nafs: seededValue(date,"nafs") };
+      return state.days[dayKey(date)] || { me: 0, nafs: 0 };
     }
     function buildHistory(period) {
       const now = new Date();
       if (period === "day") {
         const val = valuesForDate(now);
-        const meMorning = Math.floor(val.me * .3);
-        const meDay = Math.floor(val.me * .4);
-        const nafsMorning = Math.floor(val.nafs * .3);
-        const nafsDay = Math.floor(val.nafs * .4);
-        const segments = [
-          { label:"утро", me:meMorning, nafs:nafsMorning },
-          { label:"день", me:meDay, nafs:nafsDay },
-          { label:"вечер", me:val.me-meMorning-meDay, nafs:val.nafs-nafsMorning-nafsDay }
-        ];
-        return { title:"Сегодня", caption:"Выборы за сегодня", groups:segments };
+        return { title:"Сегодня", caption:"Выборы за сегодня", groups:[{ label:"сегодня", ...val }] };
       }
       if (period === "week") {
         const groups = [];
@@ -945,10 +954,10 @@
         const month = new Date(now.getFullYear(),now.getMonth()-offset,1);
         const days = new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
         let me=0,nafs=0;
-        for (let i=1;i<=days;i+=3) {
+        for (let i=1;i<=days;i++) {
           const d=new Date(month.getFullYear(),month.getMonth(),i);
           if (d>now) break;
-          const v=valuesForDate(d); me+=v.me*3; nafs+=v.nafs*3;
+          const v=valuesForDate(d); me+=v.me; nafs+=v.nafs;
         }
         groups.push({label:monthNames[month.getMonth()],me,nafs});
       }
