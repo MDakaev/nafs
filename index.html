@@ -329,59 +329,17 @@
         inset: 0;
         width: 100%;
         height: 100%;
-        /* Compact preview: frame the plant/soil, clip the sun */
-        transform: scale(1.72) translateY(26%);
-        transform-origin: center 82%;
+        display: block;
+        pointer-events: none;
         transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
-        pointer-events: none;
       }
-      #homePage:not(.tree-focus) .tree-frame .layer-light {
-        opacity: 0.05 !important;
+      #homePage:not(.tree-focus) .tree-canvas {
+        /* Slight bottom bias so the plant reads in the compact strip */
+        transform: scale(1.08) translateY(4%);
+        transform-origin: center 70%;
       }
-      .tree-frame {
-        position: absolute;
-        inset: 0;
-        display: grid;
-        place-items: center;
-        opacity: 0;
-        transition: opacity 0.55s ease;
-        pointer-events: none;
-      }
-      .tree-frame.is-active {
-        opacity: 1;
-      }
-      .tree-frame svg {
-        width: 100%;
-        height: 100%;
-        overflow: visible;
-      }
-      .tree-frame .layer-alive,
-      .tree-frame .layer-dry,
-      .tree-frame .layer-dead,
-      .tree-frame .layer-poison,
-      .tree-frame .layer-light,
-      .tree-frame .layer-soil {
-        transition: opacity 0.45s ease;
-      }
-      .soil-fill {
-        fill: var(--soil);
-      }
-      .sway {
-        transform-origin: 100px 175px;
-        animation: tree-sway 6.2s ease-in-out infinite;
-      }
-      .tree-stage[data-health="rotten"] .sway,
-      .tree-stage[data-health="dormant"] .sway {
-        animation: none;
-      }
-      .tree-stage[data-health="rotten"] .tree-frame.is-active {
-        filter: brightness(0.72) saturate(0.45);
-      }
-      .tree-stage[data-health="withered"] .tree-frame.is-active {
-        filter: brightness(0.88) saturate(0.7);
-      }
-      .tree-stage[data-health="living"] .tree-frame.is-active {
-        filter: saturate(1.08);
+      #homePage.tree-focus .tree-canvas {
+        transform: none;
       }
       .tree-caption {
         position: absolute;
@@ -416,15 +374,6 @@
         opacity: 0.55;
         transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      @keyframes tree-sway {
-        0%,
-        100% {
-          transform: rotate(-0.7deg);
-        }
-        50% {
-          transform: rotate(0.9deg);
-        }
-      }
       #homePage.tree-focus {
         overflow: hidden;
         --upper-h: 0px;
@@ -449,10 +398,6 @@
         box-shadow:
           inset 0 0 0 1px rgba(32, 37, 31, 0.08),
           0 18px 40px rgba(20, 35, 25, 0.12);
-      }
-      #homePage.tree-focus .tree-canvas {
-        transform: scale(1.08) translateY(2%);
-        transform-origin: center 58%;
       }
       #homePage.tree-focus .tree-caption {
         bottom: 22px;
@@ -1197,6 +1142,35 @@
           height: 103px;
         }
       }
+
+      .tree-debug {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        z-index: 40;
+        display: none;
+        gap: 8px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(20, 24, 20, 0.92);
+        color: #f2f0e6;
+        font-size: 12px;
+        box-shadow: 0 12px 30px rgba(0,0,0,.28);
+      }
+      .tree-debug.show { display: grid; }
+      .tree-debug label { display: grid; gap: 6px; }
+      .tree-debug input[type="range"] { width: 100%; }
+      .tree-debug .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .tree-debug button {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #3f8a66;
+        color: #fff;
+        cursor: pointer;
+      }
+      .tree-debug button.ghost { background: rgba(255,255,255,.12); }
     </style>
   </head>
   <body>
@@ -1246,7 +1220,7 @@
           aria-expanded="false"
         >
           <span class="tree-hint" data-i18n="treeHint">tap</span>
-          <div class="tree-canvas" id="treeMount" aria-hidden="true"></div>
+          <canvas class="tree-canvas" id="treeCanvas" aria-hidden="true"></canvas>
           <span class="tree-caption" id="treeCaption">Soil awaits</span>
         </button>
 
@@ -1461,6 +1435,19 @@
       </section>
 
       <div class="toast" id="toast"></div>
+
+      <aside class="tree-debug" id="treeDebug" hidden>
+        <label>
+          <span>Progress <b id="treeDebugProgressLabel">0%</b></span>
+          <input id="treeDebugProgress" type="range" min="0" max="100" value="0" />
+        </label>
+        <div class="row">
+          <button type="button" id="treeDebugGrow">Grow</button>
+          <button type="button" class="ghost" id="treeDebugRegen">Regenerate</button>
+          <span>Seed: <b id="treeDebugSeed">12345</b></span>
+        </div>
+      </aside>
+
     </main>
 
   <noscript
@@ -1475,6 +1462,9 @@
   <script src="./js/analytics.js"></script>
   <script src="./js/i18n.js"></script>
   <script src="./js/motivations.js"></script>
+  <script src="./js/growing-tree/treeGenerator.js"></script>
+  <script src="./js/growing-tree/treeRenderer.js"></script>
+  <script src="./js/growing-tree/treeAnimation.js"></script>
   <script src="./js/tree.js"></script>
   <script src="./js/app.js"></script>
   </body>

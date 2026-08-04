@@ -39,6 +39,7 @@
     motivation: 0,
     resetPeriod: "day",
     treeFocus: false,
+    treeDebugOverride: false,
   };
 
   let state;
@@ -161,6 +162,8 @@
       poison: 0,
       health: "dormant",
       total: 0,
+      progress: 0,
+      seed: 12345,
     };
     const stageEl = $("treeStage");
     if (!stageEl) return;
@@ -168,12 +171,16 @@
     stageEl.dataset.health = tree.health;
     stageEl.style.setProperty("--tree-vitality", String(tree.vitality));
     stageEl.style.setProperty("--tree-poison", String(tree.poison));
-    window.NAFS_tree?.paint?.(tree);
+    if (!state.treeDebugOverride) {
+      window.NAFS_tree?.paint?.(tree);
+    }
     $("treeCaption").textContent =
       `${t(tree.stageKey)} · ${t(healthCaption[tree.health] || "treeHealthDormant")}`;
     stageEl.setAttribute("aria-expanded", state.treeFocus ? "true" : "false");
     stageEl.setAttribute("aria-label", state.treeFocus ? t("treeClose") : t("treeOpen"));
     $("homePage").classList.toggle("tree-focus", state.treeFocus);
+    // Reflow canvas when focus changes the available area.
+    requestAnimationFrame(() => window.NAFS_tree?.getGrowing?.()?.resize?.());
   }
 
   /** Grid rows only animate between concrete lengths, so measure the chrome. */
@@ -677,11 +684,67 @@
     measureHomeRows.timer = setTimeout(measureHomeRows, 150);
   });
 
+  /** Localhost/dev only: ?treeDebug=1 shows progress/regenerate controls. */
+  function setupTreeDebug() {
+    const params = new URLSearchParams(location.search);
+    const enabled = params.has("treeDebug");
+    const panel = $("treeDebug");
+    if (!panel) return;
+    if (!enabled) {
+      panel.hidden = true;
+      panel.classList.remove("show");
+      return;
+    }
+    panel.hidden = false;
+    panel.classList.add("show");
+    const slider = $("treeDebugProgress");
+    const label = $("treeDebugProgressLabel");
+    const seedLabel = $("treeDebugSeed");
+    const syncLabel = () => {
+      const value = Number(slider.value) || 0;
+      label.textContent = `${value}%`;
+    };
+    slider.addEventListener("input", () => {
+      state.treeDebugOverride = true;
+      syncLabel();
+      const growing = window.NAFS_tree?.getGrowing?.();
+      growing?.setProgress(Number(slider.value) / 100);
+    });
+    $("treeDebugGrow").addEventListener("click", () => {
+      state.treeDebugOverride = true;
+      const growing = window.NAFS_tree?.getGrowing?.();
+      if (!growing) return;
+      const start = growing.progress;
+      const from = performance.now();
+      const duration = 4200;
+      const step = (now) => {
+        const t = Math.min(1, (now - from) / duration);
+        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const value = start + (1 - start) * eased;
+        growing.setProgress(value);
+        slider.value = String(Math.round(value * 100));
+        syncLabel();
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+    $("treeDebugRegen").addEventListener("click", () => {
+      state.treeDebugOverride = true;
+      const growing = window.NAFS_tree?.getGrowing?.();
+      const seed = growing?.regenerate();
+      if (seedLabel) seedLabel.textContent = String(seed || "");
+    });
+    const growing = window.NAFS_tree?.getGrowing?.();
+    if (growing && seedLabel) seedLabel.textContent = String(growing.seed);
+    syncLabel();
+  }
+
   maybeSeedDemoTree();
-  Promise.resolve(window.NAFS_tree?.mount?.($("treeMount")))
+  Promise.resolve(window.NAFS_tree?.mount?.($("treeCanvas")))
     .catch(() => {})
     .finally(() => {
       refreshAll();
+      setupTreeDebug();
       requestAnimationFrame(measureHomeRows);
     });
 })();

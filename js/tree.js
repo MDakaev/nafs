@@ -1,23 +1,31 @@
 /**
- * Spiritual tree model + SVG stage mounting for Nafs.
- * Size grows with journey age (always). Vitality comes from lifetime Iman vs Nafs.
+ * Spiritual tree bridge for Nafs.
+ * Maps lifetime Iman/Nafs journey → GrowingTree canvas progress/health.
  */
 (() => {
   "use strict";
 
-  /** Journey day → stage id (0 = dormant soil). */
+  /** Journey day → stage id (for captions). */
   const STAGE_RULES = [
-    { id: 0, minDay: 0, key: "treeStageSoil", file: "./assets/tree/00-soil.svg" },
-    { id: 1, minDay: 1, key: "treeStageSeed", file: "./assets/tree/01-seed.svg" },
-    { id: 2, minDay: 2, key: "treeStageSproutTiny", file: "./assets/tree/02-sprout-tiny.svg" },
-    { id: 3, minDay: 3, key: "treeStageSprout", file: "./assets/tree/03-sprout.svg" },
-    { id: 4, minDay: 7, key: "treeStageTreelet", file: "./assets/tree/04-treelet.svg" },
-    { id: 5, minDay: 30, key: "treeStageSapling", file: "./assets/tree/05-sapling.svg" },
-    { id: 6, minDay: 180, key: "treeStageYoung", file: "./assets/tree/06-young.svg" },
+    { id: 0, minDay: 0, key: "treeStageSoil" },
+    { id: 1, minDay: 1, key: "treeStageSeed" },
+    { id: 2, minDay: 2, key: "treeStageSproutTiny" },
+    { id: 3, minDay: 3, key: "treeStageSprout" },
+    { id: 4, minDay: 7, key: "treeStageTreelet" },
+    { id: 5, minDay: 30, key: "treeStageSapling" },
+    { id: 6, minDay: 180, key: "treeStageYoung" },
   ];
 
-  let framesReady = false;
-  let mountEl = null;
+  /** Discrete milestones → continuous growth curve. */
+  const GROWTH_MARKS = [
+    { day: 0, progress: 0 },
+    { day: 1, progress: 0.08 },
+    { day: 2, progress: 0.2 },
+    { day: 3, progress: 0.32 },
+    { day: 7, progress: 0.52 },
+    { day: 30, progress: 0.74 },
+    { day: 180, progress: 1 },
+  ];
 
   function parseDay(key) {
     const [y, m, d] = String(key).split("-").map(Number);
@@ -57,7 +65,6 @@
     return chosen;
   }
 
-  /** Health band from vitality 0..1 (share of Iman). */
   function healthFromVitality(vitality, total) {
     if (!total) return "dormant";
     if (vitality >= 0.78) return "living";
@@ -65,6 +72,30 @@
     if (vitality >= 0.42) return "mixed";
     if (vitality >= 0.22) return "withered";
     return "rotten";
+  }
+
+  function progressFromJourneyDay(journeyDay, hasMarks) {
+    if (!hasMarks) return 0;
+    const day = Math.max(0, journeyDay);
+    for (let i = 0; i < GROWTH_MARKS.length - 1; i += 1) {
+      const a = GROWTH_MARKS[i];
+      const b = GROWTH_MARKS[i + 1];
+      if (day <= b.day) {
+        const t = (day - a.day) / Math.max(1, b.day - a.day);
+        return a.progress + (b.progress - a.progress) * t;
+      }
+    }
+    return 1;
+  }
+
+  function hashSeed(text) {
+    const source = String(text || "nafs");
+    let h = 2166136261;
+    for (let i = 0; i < source.length; i += 1) {
+      h ^= source.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0 || 12345;
   }
 
   function compute(days, now = new Date()) {
@@ -75,8 +106,8 @@
     let stage = stageForJourneyDay(journeyDay, total > 0);
     let vitality = total ? me / total : 0.5;
     let poison = total ? nafs / total : 0;
+    let progress = progressFromJourneyDay(journeyDay, total > 0);
 
-    // Localhost preview helpers: ?treeStage=0..6 & ?treeVitality=0..1
     const host = typeof location !== "undefined" ? location.hostname : "";
     const local = host === "localhost" || host === "127.0.0.1";
     if (local && typeof location !== "undefined") {
@@ -85,7 +116,16 @@
         const n = Number(params.get("treeStage"));
         if (Number.isInteger(n) && n >= 0 && n <= 6) {
           stage = STAGE_RULES.find((rule) => rule.id === n) || stage;
+          progress = GROWTH_MARKS.find((mark) => mark.day === (STAGE_RULES[n]?.minDay || 0))?.progress;
+          if (progress == null) {
+            const map = [0, 0.08, 0.2, 0.32, 0.52, 0.74, 1];
+            progress = map[n] ?? progress;
+          }
         }
+      }
+      if (params.has("treeProgress")) {
+        const v = Number(params.get("treeProgress"));
+        if (!Number.isNaN(v)) progress = Math.max(0, Math.min(1, v));
       }
       if (params.has("treeVitality")) {
         const v = Number(params.get("treeVitality"));
@@ -96,7 +136,8 @@
       }
     }
 
-    const health = healthFromVitality(vitality, total || (local && stage.id > 0 ? 1 : 0));
+    const health = healthFromVitality(vitality, total || (progress > 0 ? 1 : 0));
+    const seed = hashSeed(firstKey || "nafs-seed");
 
     return {
       me,
@@ -110,89 +151,46 @@
       vitality,
       poison,
       health,
+      progress,
+      seed,
     };
   }
 
-  function uniquifyIds(markup, stage) {
-    // Gradients already use stage suffixes in assets; keep as a safety net.
-    return markup
-      .replace(/\bid="(glow|soilGrad|leafA|leafB|soft)-(\d+)"/g, (_, name) => `id="${name}-${stage}"`)
-      .replace(/url\(#(glow|soilGrad|leafA|leafB|soft)-\d+\)/g, (_, name) => `url(#${name}-${stage})`);
-  }
+  let growing = null;
 
-  async function mount(root) {
-    mountEl = root;
-    if (!mountEl) return false;
-    mountEl.innerHTML = "";
-    mountEl.classList.add("tree-canvas");
-
-    const results = await Promise.all(
-      STAGE_RULES.map(async (rule) => {
-        try {
-          const res = await fetch(rule.file, { cache: "force-cache" });
-          if (!res.ok) throw new Error(String(res.status));
-          const text = await res.text();
-          return { rule, text };
-        } catch {
-          return { rule, text: null };
-        }
-      })
-    );
-
-    results.forEach(({ rule, text }) => {
-      const frame = document.createElement("div");
-      frame.className = "tree-frame";
-      frame.dataset.stage = String(rule.id);
-      if (text) {
-        frame.innerHTML = uniquifyIds(text, rule.id);
-      } else {
-        frame.innerHTML =
-          '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="150" r="18" fill="#6d5a42" opacity=".5"/></svg>';
-      }
-      mountEl.appendChild(frame);
+  function mount(canvas) {
+    if (!canvas || typeof window.GrowingTree !== "function") return false;
+    if (growing) {
+      growing.destroy();
+      growing = null;
+    }
+    growing = new window.GrowingTree({
+      canvas,
+      progress: 0,
+      seed: 12345,
+      animated: true,
+      vitality: 0.7,
+      poison: 0.3,
     });
-
-    framesReady = true;
     return true;
   }
 
-  function clamp01(n) {
-    return Math.max(0, Math.min(1, n));
+  function paint(tree) {
+    if (!growing) return;
+    growing.setProgress(tree.progress ?? 0);
+    growing.setHealth(tree.vitality ?? 0.5, tree.poison ?? 0.5);
+    if (tree.seed && tree.seed !== growing.seed) {
+      growing.regenerate(tree.seed);
+    }
   }
 
-  /** Apply active stage + layer opacities from vitality/poison. */
-  function paint(tree) {
-    if (!mountEl || !framesReady) return;
-    const stage = String(tree.stage ?? 0);
-    const vitality = clamp01(Number(tree.vitality) || 0);
-    const poison = clamp01(Number(tree.poison) || 0);
-    const total = Number(tree.total) || 0;
+  function getGrowing() {
+    return growing;
+  }
 
-    mountEl.querySelectorAll(".tree-frame").forEach((frame) => {
-      frame.classList.toggle("is-active", frame.dataset.stage === stage);
-    });
-
-    const active = mountEl.querySelector(`.tree-frame[data-stage="${stage}"]`);
-    if (!active) return;
-
-    const alive = total ? clamp01(0.45 + vitality * 0.55) : 0.55;
-    const dry = total ? clamp01(poison * 0.95) : 0;
-    const dead = total ? clamp01(Math.pow(poison, 1.25) * 1.05) : 0;
-    const marks = total ? clamp01(poison) : 0;
-    const light = total ? clamp01(0.15 + vitality * 0.85) : 0.2;
-
-    const set = (selector, value) => {
-      active.querySelectorAll(selector).forEach((el) => {
-        el.style.opacity = String(value);
-      });
-    };
-
-    set(".layer-alive", alive);
-    set(".layer-dry", dry);
-    set(".layer-dead", dead);
-    set(".layer-poison", marks);
-    set(".layer-light", light);
-    set(".layer-soil", 1);
+  function destroy() {
+    if (growing) growing.destroy();
+    growing = null;
   }
 
   window.NAFS_tree = {
@@ -201,8 +199,7 @@
     healthFromVitality,
     mount,
     paint,
-    get ready() {
-      return framesReady;
-    },
+    getGrowing,
+    destroy,
   };
 })();
