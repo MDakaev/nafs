@@ -179,26 +179,41 @@
     stageEl.setAttribute("aria-expanded", state.treeFocus ? "true" : "false");
     stageEl.setAttribute("aria-label", state.treeFocus ? t("treeClose") : t("treeOpen"));
     $("homePage").classList.toggle("tree-focus", state.treeFocus);
-    // Reflow canvas when focus changes the available area.
-    requestAnimationFrame(() => window.NAFS_tree?.getGrowing?.()?.resize?.());
+    // Canvas must re-measure whenever the strip changes size.
+    const growing = window.NAFS_tree?.getGrowing?.();
+    requestAnimationFrame(() => growing?.resize?.());
+    setTimeout(() => growing?.resize?.(), 950);
   }
 
-  /** Grid rows only animate between concrete lengths, so measure the chrome. */
-  function measureHomeRows() {
+  /** Grid rows only animate between concrete lengths, so drive them from JS. */
+  function applyHomeRows() {
     const page = $("homePage");
     const upper = $("homeUpper");
     const lower = $("homeLower");
-    if (!page || !upper || !lower || state.treeFocus) return;
+    if (!page || !upper || !lower) return;
+    if (state.treeFocus) {
+      page.style.setProperty("--upper-h", "0px");
+      page.style.setProperty("--lower-h", "0px");
+      page.style.setProperty("--tree-min", "0px");
+      return;
+    }
     page.style.setProperty("--upper-h", `${Math.round(upper.scrollHeight)}px`);
     page.style.setProperty("--lower-h", `${Math.round(lower.scrollHeight)}px`);
+    page.style.removeProperty("--tree-min");
+  }
+
+  function measureHomeRows() {
+    if (state.treeFocus) return;
+    applyHomeRows();
   }
 
   function toggleTreeFocus() {
-    measureHomeRows();
-    // Let the measured lengths land before flipping to the collapsed state.
+    // Land concrete pixel rows first so the reverse animation matches.
+    applyHomeRows();
     requestAnimationFrame(() => {
       state.treeFocus = !state.treeFocus;
       save();
+      applyHomeRows();
       renderTree();
       if (state.settings.haptic) navigator.vibrate?.(10);
       analytics().track(state.treeFocus ? "tree_open" : "tree_close");

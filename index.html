@@ -331,15 +331,6 @@
         height: 100%;
         display: block;
         pointer-events: none;
-        transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      #homePage:not(.tree-focus) .tree-canvas {
-        /* Slight bottom bias so the plant reads in the compact strip */
-        transform: scale(1.08) translateY(4%);
-        transform-origin: center 70%;
-      }
-      #homePage.tree-focus .tree-canvas {
-        transform: none;
       }
       .tree-caption {
         position: absolute;
@@ -376,9 +367,6 @@
       }
       #homePage.tree-focus {
         overflow: hidden;
-        --upper-h: 0px;
-        --lower-h: 0px;
-        --tree-min: 0px;
       }
       #homePage.tree-focus .home-upper {
         transform: translateY(-18%);
