@@ -67,15 +67,14 @@
       return this.seed;
     }
 
-    resize() {
+    resize(force = false) {
       if (this._disposed) return;
       const parent = this.canvas.parentElement || this.canvas;
-      const rect = parent.getBoundingClientRect();
-      const cssW = Math.max(120, Math.floor(rect.width || optionsWidth(this)));
-      const cssH = Math.max(100, Math.floor(rect.height || cssW));
+      const cssW = Math.max(80, Math.round(parent.clientWidth || this.canvas.clientWidth || 300));
+      const cssH = Math.max(60, Math.round(parent.clientHeight || this.canvas.clientHeight || 200));
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
 
-      if (cssW === this._width && cssH === this._height && this.canvas.width) {
+      if (!force && cssW === this._width && cssH === this._height && this.canvas.width) {
         return;
       }
 
@@ -99,16 +98,18 @@
       const b = this.model.bounds;
       const treeW = Math.max(40, b.maxX - b.minX);
       const treeH = Math.max(40, b.maxY - b.minY);
-      // Fit tree with padding; keep soil near bottom.
-      const padX = 10;
+      const soilRoom = 16;
+      const padX = 8;
       const padTop = 6;
-      const padBottom = 12;
-      const scale = Math.min((w - padX * 2) / treeW, (h - padTop - padBottom) / (treeH + 24));
-      // Keep a readable plant even in the compact home strip.
-      const safeScale = Math.max(h < 140 ? 0.55 : 0.4, scale * (h < 140 ? 1.15 : 1));
+      const padBottom = Math.min(14, Math.max(6, h * 0.06));
+      // Always fit the whole silhouette; the strip is short, so height rules.
+      const scale = Math.min(
+        (w - padX * 2) / treeW,
+        (h - padTop - padBottom - soilRoom) / treeH
+      );
+      const safeScale = Math.max(0.12, scale);
 
       ctx.save();
-      // Origin at soil center near bottom.
       ctx.translate(w / 2, h - padBottom);
       ctx.scale(safeScale, safeScale);
       renderer().renderTree(ctx, this.model, {
@@ -128,7 +129,13 @@
       const dt = Math.min(0.05, (ts - this._lastTs) / 1000);
       this._lastTs = ts;
       this._time += dt;
-      this.draw();
+      // Layout changes during the focus animation; keep the canvas in sync.
+      const parent = this.canvas.parentElement || this.canvas;
+      if (parent.clientWidth !== this._width || parent.clientHeight !== this._height) {
+        this.resize();
+      } else {
+        this.draw();
+      }
       this._raf = requestAnimationFrame(this._tick);
     }
 
@@ -139,10 +146,6 @@
       if (this._ro) this._ro.disconnect();
       else window.removeEventListener("resize", this._onResize);
     }
-  }
-
-  function optionsWidth(instance) {
-    return instance.canvas.clientWidth || 300;
   }
 
   window.GrowingTree = GrowingTree;
