@@ -1,6 +1,6 @@
 /**
- * Seeded recursive tree structure for Nafs GrowingTree.
- * Deterministic: same seed → same branches/leaves.
+ * Seeded recursive oak-like tree for Nafs GrowingTree.
+ * Deterministic: same seed → same structure.
  */
 (() => {
   "use strict";
@@ -30,10 +30,6 @@
     };
   }
 
-  /**
-   * Generate a full tree model in unit space around origin.
-   * Trunk grows upward (negative Y in local space before canvas flip).
-   */
   function generateTree(seed) {
     const rng = createRng(seed);
     const branches = [];
@@ -49,31 +45,61 @@
       bounds.maxY = Math.max(bounds.maxY, y);
     };
 
-    function attachLeaves(branch) {
-      const count = 2 + Math.floor(rng() * 4);
+    function attachLeaves(branch, kind) {
+      // kind: "cotyledon" | "sprout" | "twig" | "canopy"
+      let count = 1;
+      let size = 1;
+      if (kind === "cotyledon") {
+        count = 2;
+        size = 1.35;
+      } else if (kind === "sprout") {
+        count = 2 + Math.floor(rng() * 2);
+        size = 1.1;
+      } else if (kind === "twig") {
+        count = 2 + Math.floor(rng() * 3);
+        size = 0.95;
+      } else {
+        count = 2 + Math.floor(rng() * 2);
+        size = 0.88;
+      }
+
       for (let i = 0; i < count; i += 1) {
+        const along = kind === "cotyledon" ? mix(rng, 0.55, 0.92) : mix(rng, 0.62, 1.0);
         leaves.push({
           id: leafId++,
           branchId: branch.id,
-          rotation: branch.angle + mix(rng, -1.2, 1.2),
-          scale: mix(rng, 0.62, 1.22) * (1 - branch.depth * 0.03),
-          stretch: mix(rng, 0.75, 1.28),
-          side: rng() > 0.5 ? 1 : -1,
-          offset: mix(rng, 0.7, 1.02),
-          delay: mix(rng, 0.01, 0.1),
+          kind,
+          // Appear only after this branch itself has mostly extended.
+          growthStart: branch.growthStart + (branch.growthEnd - branch.growthStart) * mix(rng, 0.55, 0.85),
+          growthEnd: Math.min(0.99, branch.growthEnd + mix(rng, 0.04, 0.12)),
+          offset: along,
+          side: i % 2 === 0 ? 1 : -1,
+          lateral: mix(rng, 1.2, kind === "canopy" ? 4.2 : 3.2),
+          rotation: branch.angle + mix(rng, -0.9, 0.9) + (i % 2 === 0 ? -0.35 : 0.35),
+          scale: size * mix(rng, 0.75, 1.2),
+          stretch: mix(rng, 0.85, 1.25),
           phase: rng() * Math.PI * 2,
           tint: rng(),
-          growthStart: Math.min(0.98, branch.growthEnd + mix(rng, 0.02, 0.11)),
+          shape: rng(), // slight oval variation
         });
       }
     }
 
-    function grow(startX, startY, angle, length, width, depth, parent) {
-      if (depth > MAX_DEPTH || length < 6.5 || nextId > 340) return;
+    function grow(startX, startY, angle, length, width, depth, parentBranch) {
+      if (depth > MAX_DEPTH || length < 7 || nextId > 280) return null;
 
-      const growthStart =
-        depth === 0 ? 0.02 : Math.max(0.08, 0.28 + depth * 0.09 + mix(rng, -0.03, 0.03));
-      const span = depth === 0 ? 0.36 : mix(rng, 0.11, 0.18) - depth * 0.005;
+      // Children begin only after the parent tip has mostly arrived.
+      let growthStart = 0.03;
+      let growthEnd = 0.22;
+      if (parentBranch) {
+        const parentSpan = parentBranch.growthEnd - parentBranch.growthStart;
+        growthStart = parentBranch.growthStart + parentSpan * mix(rng, 0.72, 0.92);
+        growthEnd = Math.min(0.92, growthStart + mix(rng, 0.1, 0.16) * (1 - depth * 0.04));
+      } else {
+        growthStart = 0.02;
+        growthEnd = 0.28;
+      }
+
       const branch = {
         id: nextId++,
         startX,
@@ -82,64 +108,88 @@
         length,
         width,
         depth,
-        parent: parent == null ? null : parent,
+        parent: parentBranch ? parentBranch.id : null,
         growthStart,
-        growthEnd: Math.min(0.86, growthStart + span),
-        bend: mix(rng, -0.14, 0.14) * (1 + depth * 0.12),
+        growthEnd,
+        // Organic kinks like the oak reference.
+        bend: mix(rng, -0.22, 0.22) * (0.55 + depth * 0.18),
+        kink: mix(rng, -0.16, 0.16),
         swayPhase: rng() * Math.PI * 2,
-        swaySpeed: mix(rng, 0.55, 1.05),
+        swaySpeed: mix(rng, 0.5, 1.0),
       };
       branches.push(branch);
 
-      const end = tip(startX, startY, angle, length);
+      const end = tip(startX, startY, angle + branch.kink * 0.35, length);
       mark(end.x, end.y);
+      mark(startX, startY);
 
-      if (depth >= 4) attachLeaves(branch);
-      if (depth === MAX_DEPTH) return;
+      // Leaves from the first sprout onward — denser higher up.
+      if (depth === 0) {
+        // Cotyledons / first leaflets near the top of the young stem.
+        attachLeaves(branch, "cotyledon");
+      } else if (depth === 1) {
+        attachLeaves(branch, "sprout");
+      } else if (depth >= 2 && depth <= 3) {
+        if (rng() > 0.25) attachLeaves(branch, "twig");
+      } else if (depth >= 4) {
+        attachLeaves(branch, "canopy");
+      }
+
+      if (depth === MAX_DEPTH) return branch;
 
       const nextDepth = depth + 1;
-      // Soft continuation of the main axis.
+      // Leader continuation — slightly off-axis for natural silhouette.
       grow(
         end.x,
         end.y,
-        angle + mix(rng, -0.18, 0.18) * (0.5 + depth * 0.08),
-        length * mix(rng, 0.66, 0.82),
-        width * mix(rng, 0.62, 0.76),
+        angle + mix(rng, -0.14, 0.14) + branch.kink * 0.2,
+        length * mix(rng, depth < 2 ? 0.7 : 0.62, depth < 2 ? 0.84 : 0.78),
+        width * mix(rng, 0.64, 0.78),
         nextDepth,
-        branch.id
+        branch
       );
 
-      const sideBudget =
-        depth === 0 ? 2 + Math.floor(rng() * 2) : rng() < 0.58 - depth * 0.03 ? 2 : 1;
+      // Side limbs: trunk gets 2–3, then irregular pairs (oak-like, not mirrored).
+      let sideCount = 0;
+      if (depth === 0) sideCount = 2 + (rng() > 0.45 ? 1 : 0);
+      else if (depth === 1) sideCount = rng() > 0.35 ? 2 : 1;
+      else if (depth < 4) sideCount = rng() > 0.4 ? 2 : 1;
+      else sideCount = rng() > 0.55 ? 1 : 0;
+
       const hand = rng() > 0.5 ? 1 : -1;
-      for (let i = 0; i < sideBudget; i += 1) {
-        if (rng() < 0.07 + depth * 0.03) continue;
+      for (let i = 0; i < sideCount; i += 1) {
+        if (rng() < 0.08) continue;
         const dir = i % 2 === 0 ? hand : -hand;
-        const spread = mix(rng, 0.36, depth < 2 ? 0.86 : 1.05);
+        // Wider spread low, tighter twigs high — rounded canopy bias upward.
+        const spreadBase = depth === 0 ? 0.55 : depth < 3 ? 0.45 : 0.7;
+        const spread = mix(rng, spreadBase, spreadBase + 0.45);
+        const upBias = depth >= 2 ? mix(rng, -0.25, -0.05) : mix(rng, -0.08, 0.12);
         grow(
           end.x,
           end.y,
-          angle + dir * spread + mix(rng, -0.12, 0.12),
-          length * mix(rng, depth === 0 ? 0.46 : 0.5, 0.74),
-          width * mix(rng, 0.46, 0.66),
+          angle + dir * spread + upBias + mix(rng, -0.1, 0.1),
+          length * mix(rng, depth === 0 ? 0.42 : 0.48, depth === 0 ? 0.68 : 0.72),
+          width * mix(rng, 0.48, 0.66),
           nextDepth,
-          branch.id
+          branch
         );
       }
+
+      return branch;
     }
 
-    // Local coordinates: origin at soil, negative Y is up.
-    grow(0, 0, -Math.PI / 2 + mix(rng, -0.04, 0.04), mix(rng, 118, 142), 13.5, 0, null);
-    mark(0, 0);
+    // Trunk: stout base, grows upward (-Y).
+    grow(0, 0, -Math.PI / 2 + mix(rng, -0.03, 0.03), mix(rng, 108, 128), 15.5, 0, null);
+    mark(0, 8);
 
-    const particles = Array.from({ length: 18 }, () => ({
-      x: mix(rng, -110, 110),
-      y: mix(rng, -190, -12),
-      radius: mix(rng, 0.55, 1.65),
-      speed: mix(rng, 3.2, 9.5),
-      drift: mix(rng, 1.8, 8),
+    const particles = Array.from({ length: 14 }, () => ({
+      x: mix(rng, -95, 95),
+      y: mix(rng, -170, -20),
+      radius: mix(rng, 0.5, 1.4),
+      speed: mix(rng, 2.8, 7.5),
+      drift: mix(rng, 1.5, 6),
       phase: rng() * Math.PI * 2,
-      opacity: mix(rng, 0.07, 0.2),
+      opacity: mix(rng, 0.06, 0.16),
     }));
 
     return { branches, leaves, particles, bounds, seed: Number(seed) || 1 };
