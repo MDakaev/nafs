@@ -628,7 +628,17 @@
   if ("serviceWorker" in navigator) {
     const host = location.hostname;
     const local = host === "localhost" || host === "127.0.0.1";
-    if (!local) {
+    if (local) {
+      // A previously installed worker would keep serving stale dev files.
+      navigator.serviceWorker.getRegistrations?.().then((regs) => {
+        if (!regs.length) return;
+        Promise.all(regs.map((reg) => reg.unregister()))
+          .then(() => caches?.keys?.())
+          .then((keys) => Promise.all((keys || []).map((key) => caches.delete(key))))
+          .then(() => location.reload())
+          .catch(() => {});
+      });
+    } else {
       let reloading = false;
       const reloadOnce = () => {
         if (reloading) return;
