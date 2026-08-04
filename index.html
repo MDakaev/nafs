@@ -431,32 +431,44 @@
       #homePage.tree-focus {
         overflow: hidden;
       }
+      #homePage.tree-focus .home-upper,
+      #homePage.tree-focus .home-lower {
+        position: absolute;
+        left: 22px;
+        right: 22px;
+        z-index: 2;
+        pointer-events: none;
+      }
       #homePage.tree-focus .home-upper {
-        transform: translateY(calc(-100% - 28px));
+        top: calc(18px + env(safe-area-inset-top));
+        transform: translateY(calc(-100% - 48px));
         opacity: 0;
         filter: blur(2px);
-        pointer-events: none;
       }
       #homePage.tree-focus .home-lower {
-        transform: translateY(calc(100% + 36px));
+        bottom: calc(15px + env(safe-area-inset-bottom));
+        transform: translateY(calc(100% + 56px));
         opacity: 0;
         filter: blur(2px);
-        pointer-events: none;
       }
       #homePage.tree-focus .tree-stage {
+        position: relative;
+        z-index: 1;
         max-height: none;
+        min-height: 0;
         flex: 1 1 auto;
-        margin: 8px 0;
+        align-self: stretch;
+        margin: 12px 0;
         border-radius: 28px;
         box-shadow:
           inset 0 0 0 1px rgba(32, 37, 31, 0.08),
           0 18px 40px rgba(20, 35, 25, 0.12);
       }
       #homePage.tree-focus .tree-canvas {
-        transform: scale(1.08) translateY(2%);
+        transform: scale(1.28) translateY(4%);
       }
       #homePage.tree-focus .tree-caption {
-        bottom: 18px;
+        bottom: 22px;
         font-size: 11px;
         opacity: 0.92;
       }
