@@ -5,6 +5,7 @@
  * - js/analytics.js
  * - js/i18n.js
  * - js/motivations.js
+ * - js/tree.js
  */
 (() => {
   "use strict";
@@ -37,6 +38,7 @@
     lang: "ru",
     motivation: 0,
     resetPeriod: "day",
+    treeFocus: false,
   };
 
   let state;
@@ -47,8 +49,30 @@
   }
   state.settings = { ...defaults.settings, ...(state.settings || {}) };
   state.lang = state.lang === "en" ? "en" : "ru";
+  state.treeFocus = Boolean(state.treeFocus);
   if (!Number.isInteger(state.motivation)) {
     state.motivation = Math.floor(Math.random() * motivations().length);
+  }
+
+  /** Localhost-only: seed history so tree stages can be previewed via ?demoTree=1 */
+  function maybeSeedDemoTree() {
+    const host = location.hostname;
+    const local = host === "localhost" || host === "127.0.0.1";
+    if (!local || !new URLSearchParams(location.search).has("demoTree")) return;
+    if (Object.keys(state.days || {}).length) return;
+    const now = new Date();
+    const days = {};
+    for (let i = 45; i >= 0; i -= 1) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const key = dayKey(date);
+      days[key] = {
+        me: 1 + ((i * 3) % 5),
+        nafs: 1 + ((i * 2) % 4),
+      };
+    }
+    state.days = days;
+    save();
   }
 
   function save() {
@@ -120,6 +144,44 @@
     renderSpeech(true);
   }
 
+  const healthCaption = {
+    living: "treeHealthLiving",
+    mostly: "treeHealthMostly",
+    mixed: "treeHealthMixed",
+    withered: "treeHealthWithered",
+    rotten: "treeHealthRotten",
+    dormant: "treeHealthDormant",
+  };
+
+  function renderTree() {
+    const tree = window.NAFS_tree?.compute(state.days) || {
+      stage: 0,
+      stageKey: "treeStageSoil",
+      vitality: 0.5,
+      poison: 0,
+      health: "dormant",
+    };
+    const stageEl = $("treeStage");
+    if (!stageEl) return;
+    stageEl.dataset.stage = String(tree.stage);
+    stageEl.dataset.health = tree.health;
+    stageEl.style.setProperty("--tree-vitality", String(tree.vitality));
+    stageEl.style.setProperty("--tree-poison", String(tree.poison));
+    $("treeCaption").textContent =
+      `${t(tree.stageKey)} · ${t(healthCaption[tree.health] || "treeHealthDormant")}`;
+    stageEl.setAttribute("aria-expanded", state.treeFocus ? "true" : "false");
+    stageEl.setAttribute("aria-label", state.treeFocus ? t("treeClose") : t("treeOpen"));
+    $("homePage").classList.toggle("tree-focus", state.treeFocus);
+  }
+
+  function toggleTreeFocus() {
+    state.treeFocus = !state.treeFocus;
+    save();
+    renderTree();
+    if (state.settings.haptic) navigator.vibrate?.(10);
+    analytics().track(state.treeFocus ? "tree_open" : "tree_close");
+  }
+
   /**
    * Home scorecard.
    * Card color shifts from near-black (nafs lead) to green (user lead).
@@ -151,6 +213,7 @@
     $("balanceFill").style.width = `${total ? (me / total) * 100 : 50}%`;
     $("balanceCard").style.background =
       `linear-gradient(145deg,rgb(${start.join(",")}),rgb(${end.join(",")}))`;
+    renderTree();
   }
 
   function mark(side) {
@@ -501,11 +564,25 @@
   document.querySelectorAll("[data-lang-choice]").forEach((b) => {
     b.addEventListener("click", () => setLanguage(b.dataset.langChoice));
   });
-  $("openMenu").addEventListener("click", openMenu);
+  $("openMenu").addEventListener("click", () => {
+    if (state.treeFocus) {
+      state.treeFocus = false;
+      renderTree();
+    }
+    openMenu();
+  });
   $("closeMenu").addEventListener("click", closeLayers);
   $("scrim").addEventListener("click", closeLayers);
   $("backHome").addEventListener("click", () => openPage("home"));
   $("speech").addEventListener("click", nextSpeech);
+  $("treeStage").addEventListener("click", toggleTreeFocus);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.treeFocus) {
+      state.treeFocus = false;
+      save();
+      renderTree();
+    }
+  });
   $("undo").addEventListener("click", undo);
   document.querySelectorAll("[data-reset-period]").forEach((b) => {
     b.addEventListener("click", () => {
@@ -547,17 +624,21 @@
   });
 
   if ("serviceWorker" in navigator) {
-    let reloading = false;
-    const reloadOnce = () => {
-      if (reloading) return;
-      reloading = true;
-      location.reload();
-    };
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      if (event.data?.type === "NAFS_SW_UPDATED") reloadOnce();
-    });
-    navigator.serviceWorker.addEventListener("controllerchange", reloadOnce);
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    const host = location.hostname;
+    const local = host === "localhost" || host === "127.0.0.1";
+    if (!local) {
+      let reloading = false;
+      const reloadOnce = () => {
+        if (reloading) return;
+        reloading = true;
+        location.reload();
+      };
+      navigator.serviceWorker.addEventListener("message", (event) => {
+        if (event.data?.type === "NAFS_SW_UPDATED") reloadOnce();
+      });
+      navigator.serviceWorker.addEventListener("controllerchange", reloadOnce);
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
   }
 
   // Sync toggles with stored settings on boot.
@@ -565,5 +646,6 @@
     b.classList.toggle("on", Boolean(state.settings[b.dataset.setting]));
   });
 
+  maybeSeedDemoTree();
   refreshAll();
 })();

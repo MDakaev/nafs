@@ -183,8 +183,8 @@
 
       /* Home */
       .speech {
-        min-height: 128px;
-        padding-top: clamp(25px, 5vh, 48px);
+        min-height: 96px;
+        padding-top: clamp(14px, 3vh, 28px);
         cursor: pointer;
       }
       .speech .arabic {
@@ -232,9 +232,240 @@
           transform: none;
         }
       }
+      /* Spiritual tree — distant on home, focus expands */
+      .home-upper,
+      .home-lower {
+        flex: 0 0 auto;
+        transition:
+          transform 0.72s cubic-bezier(0.22, 0.82, 0.2, 1),
+          opacity 0.48s ease,
+          filter 0.48s ease;
+        will-change: transform, opacity;
+      }
+      .tree-stage {
+        --tree-vitality: 0.5;
+        --tree-poison: 0.5;
+        --leaf: #3f8a66;
+        --leaf-dry: #b7a35c;
+        --leaf-dead: #6b5a3c;
+        --bark: #5a4634;
+        --soil: #6d5a42;
+        --sky-a: #e8efe4;
+        --sky-b: #d5e0d2;
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 76px;
+        max-height: 118px;
+        margin: 4px 0 8px;
+        padding: 0;
+        border: 0;
+        border-radius: 22px;
+        background:
+          radial-gradient(ellipse at 50% 18%, rgba(255, 236, 180, calc(0.22 * var(--tree-vitality))), transparent 42%),
+          linear-gradient(180deg, var(--sky-a), var(--sky-b));
+        color: inherit;
+        cursor: pointer;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(32, 37, 31, 0.06);
+        transition:
+          max-height 0.72s cubic-bezier(0.22, 0.82, 0.2, 1),
+          margin 0.72s ease,
+          border-radius 0.72s ease,
+          box-shadow 0.72s ease,
+          transform 0.72s cubic-bezier(0.22, 0.82, 0.2, 1);
+        -webkit-tap-highlight-color: transparent;
+      }
+      .tree-stage:focus-visible {
+        outline: 2px solid var(--green-2);
+        outline-offset: 3px;
+      }
+      .tree-stage[data-health="living"] {
+        --leaf: #2f9a62;
+        --bark: #4f3d2c;
+        --soil: #6a5740;
+        --sky-a: #eef5e8;
+        --sky-b: #d7e8d4;
+      }
+      .tree-stage[data-health="mostly"] {
+        --leaf: #4f9460;
+        --leaf-dry: #c2b06a;
+        --sky-a: #ebf0e4;
+        --sky-b: #d8e0d0;
+      }
+      .tree-stage[data-health="mixed"] {
+        --leaf: #6f8f55;
+        --leaf-dry: #c4a84a;
+        --leaf-dead: #7a6540;
+        --sky-a: #e8e6d8;
+        --sky-b: #d4d0bf;
+      }
+      .tree-stage[data-health="withered"] {
+        --leaf: #8a7a48;
+        --leaf-dry: #a8893a;
+        --leaf-dead: #5c4b32;
+        --bark: #3f342a;
+        --soil: #4d4033;
+        --sky-a: #ddd6c8;
+        --sky-b: #bdb3a3;
+      }
+      .tree-stage[data-health="rotten"] {
+        --leaf: #3a342c;
+        --leaf-dry: #2a241c;
+        --leaf-dead: #1a1612;
+        --bark: #1c1713;
+        --soil: #2a221a;
+        --sky-a: #2c2924;
+        --sky-b: #1a1814;
+      }
+      .tree-stage[data-health="dormant"] {
+        --sky-a: #ece8dc;
+        --sky-b: #ddd6c7;
+      }
+      .tree-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        transform: scale(0.72) translateY(8%);
+        transform-origin: center 70%;
+        transition: transform 0.72s cubic-bezier(0.22, 0.82, 0.2, 1);
+        pointer-events: none;
+      }
+      .tree-caption {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 8px;
+        z-index: 2;
+        color: var(--muted);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-align: center;
+        text-transform: uppercase;
+        opacity: 0.78;
+        transition: opacity 0.35s ease, color 0.35s ease;
+      }
+      .tree-stage[data-health="rotten"] .tree-caption {
+        color: rgba(230, 220, 200, 0.55);
+      }
+      .tree-hint {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        z-index: 2;
+        color: var(--faint);
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.55;
+      }
+      .tree-layer {
+        opacity: 0;
+        transition: opacity 0.45s ease;
+      }
+      .tree-stage[data-stage="0"] .layer-soil,
+      .tree-stage[data-stage="1"] .layer-soil,
+      .tree-stage[data-stage="1"] .layer-seed,
+      .tree-stage[data-stage="2"] .layer-soil,
+      .tree-stage[data-stage="2"] .layer-sprout-tiny,
+      .tree-stage[data-stage="3"] .layer-soil,
+      .tree-stage[data-stage="3"] .layer-sprout,
+      .tree-stage[data-stage="4"] .layer-soil,
+      .tree-stage[data-stage="4"] .layer-treelet,
+      .tree-stage[data-stage="5"] .layer-soil,
+      .tree-stage[data-stage="5"] .layer-sapling,
+      .tree-stage[data-stage="6"] .layer-soil,
+      .tree-stage[data-stage="6"] .layer-young {
+        opacity: 1;
+      }
+      .poison-marks {
+        opacity: calc(var(--tree-poison) * 1.15);
+      }
+      .sun-glow {
+        opacity: calc(0.15 + var(--tree-vitality) * 0.85);
+        animation: sun-breathe 5.5s ease-in-out infinite;
+      }
+      .leaf-live {
+        fill: var(--leaf);
+      }
+      .leaf-dry {
+        fill: var(--leaf-dry);
+        opacity: calc(0.15 + var(--tree-poison) * 0.9);
+      }
+      .leaf-dead {
+        fill: var(--leaf-dead);
+        opacity: calc(var(--tree-poison) * 0.95);
+      }
+      .trunk {
+        fill: var(--bark);
+      }
+      .soil-fill {
+        fill: var(--soil);
+      }
+      .sway {
+        transform-origin: 100px 148px;
+        animation: tree-sway 6.2s ease-in-out infinite;
+      }
+      .tree-stage[data-health="rotten"] .sway,
+      .tree-stage[data-health="dormant"] .sway {
+        animation: none;
+      }
+      @keyframes tree-sway {
+        0%,
+        100% {
+          transform: rotate(-0.7deg);
+        }
+        50% {
+          transform: rotate(0.9deg);
+        }
+      }
+      @keyframes sun-breathe {
+        0%,
+        100% {
+          opacity: calc(0.2 + var(--tree-vitality) * 0.55);
+        }
+        50% {
+          opacity: calc(0.35 + var(--tree-vitality) * 0.65);
+        }
+      }
+      #homePage.tree-focus {
+        overflow: hidden;
+      }
+      #homePage.tree-focus .home-upper {
+        transform: translateY(calc(-100% - 28px));
+        opacity: 0;
+        filter: blur(2px);
+        pointer-events: none;
+      }
+      #homePage.tree-focus .home-lower {
+        transform: translateY(calc(100% + 36px));
+        opacity: 0;
+        filter: blur(2px);
+        pointer-events: none;
+      }
+      #homePage.tree-focus .tree-stage {
+        max-height: none;
+        flex: 1 1 auto;
+        margin: 8px 0;
+        border-radius: 28px;
+        box-shadow:
+          inset 0 0 0 1px rgba(32, 37, 31, 0.08),
+          0 18px 40px rgba(20, 35, 25, 0.12);
+      }
+      #homePage.tree-focus .tree-canvas {
+        transform: scale(1.08) translateY(2%);
+      }
+      #homePage.tree-focus .tree-caption {
+        bottom: 18px;
+        font-size: 11px;
+        opacity: 0.92;
+      }
+      #homePage.tree-focus .tree-hint {
+        opacity: 0.8;
+      }
       .balance-card {
         position: relative;
-        margin: auto 0 18px;
+        margin: 0 0 18px;
         padding: 22px 20px 18px;
         overflow: hidden;
         border-radius: 27px;
@@ -944,11 +1175,15 @@
       }
       @media (max-height: 740px) {
         .speech {
-          min-height: 100px;
-          padding-top: 20px;
+          min-height: 78px;
+          padding-top: 12px;
         }
         .speech h1 {
-          font-size: 28px;
+          font-size: 26px;
+        }
+        .tree-stage {
+          min-height: 64px;
+          max-height: 88px;
         }
         .balance-card {
           padding-block: 17px 15px;
@@ -973,58 +1208,208 @@
 
       <!-- HOME -->
       <section class="page active" id="homePage">
-        <header class="topbar">
-          <button
-            class="icon-button"
-            id="openMenu"
-            data-i18n-aria="openMenu"
-            aria-label="Open menu"
-          >
-            <span class="menu-lines"><i></i><i></i></span>
-          </button>
-          <div class="brand">Nafs <span data-i18n="brandAr">نَفْس</span></div>
-          <div class="date-pill" id="todayLabel"></div>
-        </header>
+        <div class="home-upper" id="homeUpper">
+          <header class="topbar">
+            <button
+              class="icon-button"
+              id="openMenu"
+              data-i18n-aria="openMenu"
+              aria-label="Open menu"
+            >
+              <span class="menu-lines"><i></i><i></i></span>
+            </button>
+            <div class="brand">Nafs <span data-i18n="brandAr">نَفْس</span></div>
+            <div class="date-pill" id="todayLabel"></div>
+          </header>
 
-        <div class="install-banner" id="installBanner">
-          <p>
-            <strong data-i18n="installBannerTitle">Add to Home Screen</strong>
-            <span data-i18n="installBannerBody">Open Nafs like an app</span>
-          </p>
-          <button type="button" id="installBannerBtn" data-i18n="install">Install</button>
+          <div class="install-banner" id="installBanner">
+            <p>
+              <strong data-i18n="installBannerTitle">Add to Home Screen</strong>
+              <span data-i18n="installBannerBody">Open Nafs like an app</span>
+            </p>
+            <button type="button" id="installBannerBtn" data-i18n="install">Install</button>
+          </div>
+
+          <div class="speech" id="speech" title="Shuffle thought">
+            <span class="arabic" data-i18n="sabr">صَبْر</span>
+            <h1 id="speechTitle"></h1>
+            <p id="speechBody"></p>
+          </div>
         </div>
 
-        <div class="speech" id="speech" title="Shuffle thought">
-          <span class="arabic" data-i18n="sabr">صَبْر</span>
-          <h1 id="speechTitle"></h1>
-          <p id="speechBody"></p>
-        </div>
+        <button
+          type="button"
+          class="tree-stage"
+          id="treeStage"
+          data-stage="0"
+          data-health="dormant"
+          data-i18n-aria="treeOpen"
+          aria-label="Open spiritual tree"
+          aria-expanded="false"
+        >
+          <span class="tree-hint" data-i18n="treeHint">tap</span>
+          <svg class="tree-canvas" viewBox="0 0 200 170" aria-hidden="true">
+            <defs>
+              <radialGradient id="sunGrad" cx="70%" cy="18%" r="35%">
+                <stop offset="0%" stop-color="#ffe7a0" stop-opacity="0.9" />
+                <stop offset="100%" stop-color="#ffe7a0" stop-opacity="0" />
+              </radialGradient>
+              <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="currentColor" stop-opacity="0.12" />
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0.02" />
+              </linearGradient>
+            </defs>
+            <circle class="sun-glow" cx="142" cy="28" r="34" fill="url(#sunGrad)" />
+            <ellipse cx="100" cy="152" rx="78" ry="10" fill="url(#groundGrad)" />
 
-        <section class="balance-card" id="balanceCard">
-          <div class="card-top">
-            <span data-i18n="balanceToday">Today's balance</span>
-            <span id="cardStatus">quiet</span>
-          </div>
-          <div class="balance-main">
-            <strong id="delta">0</strong><span id="deltaCaption">even</span>
-          </div>
-          <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
-          <div class="card-split">
-            <span><span data-i18n="me">Me</span> · <b id="meCount">0</b></span>
-            <span><span data-i18n="nafs">Nafs</span> · <b id="nafsCount">0</b></span>
-          </div>
-        </section>
+            <g class="tree-layer layer-soil">
+              <path
+                class="soil-fill"
+                d="M46 148c18-16 36-22 54-22s36 6 54 22c-20 6-38 9-54 9s-34-3-54-9z"
+                opacity="0.92"
+              />
+              <path
+                d="M58 146c14-10 28-14 42-14s28 4 42 14"
+                fill="none"
+                stroke="rgba(0,0,0,0.12)"
+                stroke-width="1.2"
+              />
+            </g>
 
-        <p class="question" data-i18n="prompt">Who steered this time?</p>
-        <div class="actions">
-          <button class="action me" data-mark="me">
-            <span class="plus">+</span><b data-i18n="me">Me</b>
-          </button>
-          <button class="action nafs" data-mark="nafs">
-            <span class="plus">+</span><b data-i18n="nafs">Nafs</b>
-          </button>
+            <g class="tree-layer layer-seed">
+              <ellipse class="soil-fill" cx="100" cy="138" rx="18" ry="7" opacity="0.85" />
+              <ellipse cx="100" cy="133" rx="6" ry="4.5" fill="#6b4f2c" />
+              <ellipse cx="100" cy="132" rx="3.2" ry="2.2" fill="#8d6a3d" />
+              <g class="poison-marks">
+                <circle cx="90" cy="140" r="1.3" fill="#1a1410" />
+                <circle cx="112" cy="141" r="1.1" fill="#2a2018" />
+              </g>
+            </g>
+
+            <g class="tree-layer layer-sprout-tiny sway">
+              <path
+                d="M100 140c0-10 1.5-18 1.2-26"
+                fill="none"
+                stroke="var(--leaf)"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+              <path class="leaf-live" d="M101 118c6-1 10 3 9 8-5 1-9-2-9-8z" />
+              <g class="poison-marks">
+                <circle cx="98" cy="128" r="1.4" fill="#1a1410" />
+                <circle cx="103" cy="122" r="1.1" fill="#3a2a18" />
+              </g>
+            </g>
+
+            <g class="tree-layer layer-sprout sway">
+              <path
+                d="M100 142c-1-14 2-28 1-40"
+                fill="none"
+                stroke="var(--leaf)"
+                stroke-width="2.6"
+                stroke-linecap="round"
+              />
+              <path class="leaf-live" d="M101 112c9-2 14 5 12 12-7 2-12-3-12-12z" />
+              <path class="leaf-live" d="M99 120c-8 0-12 6-10 11 6 1 10-4 10-11z" />
+              <path class="leaf-dry" d="M104 128c5 2 7 7 4 10-4-1-6-5-4-10z" />
+              <g class="poison-marks">
+                <circle cx="97" cy="130" r="1.5" fill="#1a1410" />
+                <circle cx="105" cy="118" r="1.2" fill="#2c2014" />
+                <circle cx="99" cy="110" r="1.1" fill="#1a1410" />
+              </g>
+            </g>
+
+            <g class="tree-layer layer-treelet sway">
+              <path class="trunk" d="M97 144c1-22 2-40 3-54h2c0 14 1 32 2 54z" />
+              <path class="leaf-live" d="M100 78c-16 4-24 20-18 34 12-4 22-14 18-34z" />
+              <path class="leaf-live" d="M100 78c16 3 25 19 19 34-12-3-23-14-19-34z" />
+              <path class="leaf-live" d="M100 70c-8 0-14 8-12 16 8-2 14-6 12-16z" />
+              <path class="leaf-dry" d="M118 104c6 4 6 12 0 14-3-4-5-9 0-14z" />
+              <path class="leaf-dead" d="M84 108c-5 3-6 10-1 12 2-4 4-8 1-12z" />
+              <g class="poison-marks">
+                <circle cx="92" cy="96" r="1.6" fill="#1a1410" />
+                <circle cx="110" cy="90" r="1.3" fill="#241c14" />
+              </g>
+            </g>
+
+            <g class="tree-layer layer-sapling sway">
+              <path class="trunk" d="M95 146c2-30 3-52 4-70h4c0 18 2 42 4 70z" />
+              <path
+                class="trunk"
+                d="M99 100c-12-8-18-6-24-2M103 108c10-6 18-4 24 0"
+                fill="none"
+                stroke="var(--bark)"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <ellipse class="leaf-live" cx="100" cy="68" rx="28" ry="24" />
+              <ellipse class="leaf-live" cx="78" cy="86" rx="16" ry="13" />
+              <ellipse class="leaf-live" cx="124" cy="88" rx="15" ry="12" />
+              <ellipse class="leaf-dry" cx="116" cy="72" rx="10" ry="8" />
+              <ellipse class="leaf-dead" cx="86" cy="74" rx="8" ry="7" />
+              <g class="poison-marks">
+                <circle cx="90" cy="64" r="1.7" fill="#15110d" />
+                <circle cx="112" cy="58" r="1.4" fill="#1c1610" />
+                <circle cx="128" cy="92" r="1.5" fill="#15110d" />
+              </g>
+            </g>
+
+            <g class="tree-layer layer-young sway">
+              <path class="trunk" d="M93 148c2-36 4-64 5-86h6c0 22 3 52 6 86z" />
+              <path
+                class="trunk"
+                d="M98 96c-16-12-26-10-34-4M106 104c14-10 26-8 34-2M100 78c-10-14-8-22-4-28M104 82c8-12 16-16 24-16"
+                fill="none"
+                stroke="var(--bark)"
+                stroke-width="2.4"
+                stroke-linecap="round"
+              />
+              <ellipse class="leaf-live" cx="100" cy="54" rx="36" ry="30" />
+              <ellipse class="leaf-live" cx="68" cy="78" rx="20" ry="16" />
+              <ellipse class="leaf-live" cx="134" cy="80" rx="19" ry="15" />
+              <ellipse class="leaf-live" cx="100" cy="36" rx="18" ry="14" />
+              <ellipse class="leaf-dry" cx="122" cy="50" rx="12" ry="10" />
+              <ellipse class="leaf-dry" cx="78" cy="58" rx="10" ry="8" />
+              <ellipse class="leaf-dead" cx="140" cy="70" rx="9" ry="7" />
+              <ellipse class="leaf-dead" cx="62" cy="70" rx="8" ry="6" />
+              <g class="poison-marks">
+                <circle cx="88" cy="42" r="1.8" fill="#120e0a" />
+                <circle cx="116" cy="38" r="1.5" fill="#1a1410" />
+                <circle cx="132" cy="66" r="1.6" fill="#120e0a" />
+                <circle cx="70" cy="66" r="1.4" fill="#1a1410" />
+              </g>
+            </g>
+          </svg>
+          <span class="tree-caption" id="treeCaption" data-i18n="treeStageSoil">Soil awaits</span>
+        </button>
+
+        <div class="home-lower" id="homeLower">
+          <section class="balance-card" id="balanceCard">
+            <div class="card-top">
+              <span data-i18n="balanceToday">Today's balance</span>
+              <span id="cardStatus">quiet</span>
+            </div>
+            <div class="balance-main">
+              <strong id="delta">0</strong><span id="deltaCaption">even</span>
+            </div>
+            <div class="balance-track"><div class="balance-fill" id="balanceFill"></div></div>
+            <div class="card-split">
+              <span><span data-i18n="me">Iman</span> · <b id="meCount">0</b></span>
+              <span><span data-i18n="nafs">Nafs</span> · <b id="nafsCount">0</b></span>
+            </div>
+          </section>
+
+          <p class="question" data-i18n="prompt">Who steered this time?</p>
+          <div class="actions">
+            <button class="action me" data-mark="me">
+              <span class="plus">+</span><b data-i18n="me">Iman</b>
+            </button>
+            <button class="action nafs" data-mark="nafs">
+              <span class="plus">+</span><b data-i18n="nafs">Nafs</b>
+            </button>
+          </div>
+          <button class="undo" id="undo" data-i18n="undo">Undo last mark</button>
         </div>
-        <button class="undo" id="undo" data-i18n="undo">Undo last mark</button>
       </section>
 
       <!-- HISTORY -->
@@ -1223,6 +1608,7 @@
   <script src="./js/analytics.js"></script>
   <script src="./js/i18n.js"></script>
   <script src="./js/motivations.js"></script>
+  <script src="./js/tree.js"></script>
   <script src="./js/app.js"></script>
   </body>
 </html>
