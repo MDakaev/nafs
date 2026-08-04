@@ -160,6 +160,7 @@
       vitality: 0.5,
       poison: 0,
       health: "dormant",
+      total: 0,
     };
     const stageEl = $("treeStage");
     if (!stageEl) return;
@@ -167,6 +168,7 @@
     stageEl.dataset.health = tree.health;
     stageEl.style.setProperty("--tree-vitality", String(tree.vitality));
     stageEl.style.setProperty("--tree-poison", String(tree.poison));
+    window.NAFS_tree?.paint?.(tree);
     $("treeCaption").textContent =
       `${t(tree.stageKey)} · ${t(healthCaption[tree.health] || "treeHealthDormant")}`;
     stageEl.setAttribute("aria-expanded", state.treeFocus ? "true" : "false");
@@ -647,5 +649,7 @@
   });
 
   maybeSeedDemoTree();
-  refreshAll();
+  Promise.resolve(window.NAFS_tree?.mount?.($("treeMount")))
+    .catch(() => {})
+    .finally(() => refreshAll());
 })();

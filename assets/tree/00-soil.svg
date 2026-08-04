@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="skySoft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4efe3" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#d7d0bf" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#skySoft)"/>
+  <g class="layer-soil">
+    <path class="soil-fill" d="M28 168c18-22 48-34 72-34s54 12 72 34c-24 8-48 12-72 12s-48-4-72-12z" opacity=".9"/>
+    <path d="M44 164c14-12 36-20 56-20s42 8 56 20" stroke="rgba(40,30,20,.18)" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M62 170c10-4 24-7 38-7s28 3 38 7" stroke="rgba(40,30,20,.1)" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <g class="layer-light">
+    <circle cx="148" cy="42" r="26" fill="#f0d789" opacity=".18"/>
+  </g>
+  <g class="layer-alive"></g>
+  <g class="layer-dry"></g>
+  <g class="layer-dead"></g>
+  <g class="layer-poison"></g>
+
+</svg>
