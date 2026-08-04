@@ -39,7 +39,6 @@
     motivation: 0,
     resetPeriod: "day",
     treeFocus: false,
-    treeDebugOverride: false,
   };
 
   let state;
@@ -51,6 +50,9 @@
   state.settings = { ...defaults.settings, ...(state.settings || {}) };
   state.lang = state.lang === "en" ? "en" : "ru";
   state.treeFocus = Boolean(state.treeFocus);
+  // Debug panel takes over progress only for the current page view.
+  delete state.treeDebugOverride;
+  let treeDebugOverride = false;
   if (!Number.isInteger(state.motivation)) {
     state.motivation = Math.floor(Math.random() * motivations().length);
   }
@@ -171,7 +173,7 @@
     stageEl.dataset.health = tree.health;
     stageEl.style.setProperty("--tree-vitality", String(tree.vitality));
     stageEl.style.setProperty("--tree-poison", String(tree.poison));
-    if (!state.treeDebugOverride) {
+    if (!treeDebugOverride) {
       window.NAFS_tree?.paint?.(tree);
     }
     $("treeCaption").textContent =
@@ -720,13 +722,13 @@
       label.textContent = `${value}%`;
     };
     slider.addEventListener("input", () => {
-      state.treeDebugOverride = true;
+      treeDebugOverride = true;
       syncLabel();
       const growing = window.NAFS_tree?.getGrowing?.();
       growing?.setProgress(Number(slider.value) / 100);
     });
     $("treeDebugGrow").addEventListener("click", () => {
-      state.treeDebugOverride = true;
+      treeDebugOverride = true;
       const growing = window.NAFS_tree?.getGrowing?.();
       if (!growing) return;
       const start = growing.progress;
@@ -744,7 +746,7 @@
       requestAnimationFrame(step);
     });
     $("treeDebugRegen").addEventListener("click", () => {
-      state.treeDebugOverride = true;
+      treeDebugOverride = true;
       const growing = window.NAFS_tree?.getGrowing?.();
       const seed = growing?.regenerate();
       if (seedLabel) seedLabel.textContent = String(seed || "");
