@@ -51,32 +51,36 @@
       let size = 1;
       if (kind === "cotyledon") {
         count = 2;
-        size = 1.35;
+        size = 2.1;
       } else if (kind === "sprout") {
-        count = 2 + Math.floor(rng() * 2);
-        size = 1.1;
+        count = 3 + Math.floor(rng() * 2);
+        size = 1.55;
       } else if (kind === "twig") {
         count = 2 + Math.floor(rng() * 3);
-        size = 0.95;
+        size = 1.15;
       } else {
         count = 2 + Math.floor(rng() * 2);
-        size = 0.88;
+        size = 0.95;
       }
 
       for (let i = 0; i < count; i += 1) {
-        const along = kind === "cotyledon" ? mix(rng, 0.55, 0.92) : mix(rng, 0.62, 1.0);
+        const along = kind === "cotyledon" ? mix(rng, 0.62, 0.95) : mix(rng, 0.55, 1.0);
+        const appearAt =
+          kind === "cotyledon" || kind === "sprout"
+            ? mix(rng, 0.32, 0.52)
+            : mix(rng, 0.55, 0.85);
         leaves.push({
           id: leafId++,
           branchId: branch.id,
           kind,
           // Appear only after this branch itself has mostly extended.
-          growthStart: branch.growthStart + (branch.growthEnd - branch.growthStart) * mix(rng, 0.55, 0.85),
-          growthEnd: Math.min(0.99, branch.growthEnd + mix(rng, 0.04, 0.12)),
+          growthStart: branch.growthStart + (branch.growthEnd - branch.growthStart) * appearAt,
+          growthEnd: Math.min(0.99, branch.growthEnd + mix(rng, 0.03, 0.1)),
           offset: along,
           side: i % 2 === 0 ? 1 : -1,
-          lateral: mix(rng, 1.2, kind === "canopy" ? 4.2 : 3.2),
-          rotation: branch.angle + mix(rng, -0.9, 0.9) + (i % 2 === 0 ? -0.35 : 0.35),
-          scale: size * mix(rng, 0.75, 1.2),
+          lateral: mix(rng, kind === "cotyledon" ? 2.2 : 1.4, kind === "canopy" ? 4.2 : 3.4),
+          rotation: branch.angle + mix(rng, -0.9, 0.9) + (i % 2 === 0 ? -0.4 : 0.4),
+          scale: size * mix(rng, 0.8, 1.2),
           stretch: mix(rng, 0.85, 1.25),
           phase: rng() * Math.PI * 2,
           tint: rng(),

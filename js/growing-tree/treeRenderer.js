@@ -205,7 +205,7 @@
   }
 
   function drawLeaf(ctx, leaf, branch, tipState, progress, time, animated, colors, vitality, poison) {
-    if (!tipState || tipState.local < 0.45) return;
+    if (!tipState || tipState.local < 0.22) return;
     const reveal = leafReveal(leaf, progress);
     if (reveal.opacity <= 0.02) return;
 
