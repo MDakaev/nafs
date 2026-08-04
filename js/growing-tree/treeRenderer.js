@@ -219,8 +219,8 @@
     const y = pos.y + Math.sin(pos.angle + Math.PI / 2) * leaf.side * leaf.lateral;
 
     const fill = leafFill(colors, leaf.tint, vitality, poison);
-    const w = 5.2 + leaf.shape * 2.2;
-    const h = 3.4 + (1 - leaf.shape) * 1.6;
+    const w = (leaf.kind === "cotyledon" ? 8.5 : leaf.kind === "sprout" ? 7.2 : 5.4) + leaf.shape * 2.4;
+    const h = (leaf.kind === "cotyledon" ? 5.2 : leaf.kind === "sprout" ? 4.4 : 3.4) + (1 - leaf.shape) * 1.5;
 
     ctx.save();
     ctx.translate(x, y);
