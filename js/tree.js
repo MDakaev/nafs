@@ -114,9 +114,10 @@
   }
 
   function uniquifyIds(markup, stage) {
+    // Gradients already use stage suffixes in assets; keep as a safety net.
     return markup
-      .replace(/\bid="skySoft"/g, `id="skySoft-${stage}"`)
-      .replace(/url\(#skySoft\)/g, `url(#skySoft-${stage})`);
+      .replace(/\bid="(glow|soilGrad|leafA|leafB|soft)-(\d+)"/g, (_, name) => `id="${name}-${stage}"`)
+      .replace(/url\(#(glow|soilGrad|leafA|leafB|soft)-\d+\)/g, (_, name) => `url(#${name}-${stage})`);
   }
 
   async function mount(root) {
