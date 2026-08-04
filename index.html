@@ -232,14 +232,20 @@
           transform: none;
         }
       }
-      /* Spiritual tree — distant on home, focus expands */
+      /* Spiritual tree — distant on home, focus expands (open/close are reverse) */
+      #homePage {
+        display: grid;
+        grid-template-rows: auto minmax(88px, 112px) auto;
+        transition: grid-template-rows 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+      }
       .home-upper,
       .home-lower {
-        flex: 0 0 auto;
+        min-height: 0;
+        overflow: hidden;
         transition:
-          transform 0.72s cubic-bezier(0.22, 0.82, 0.2, 1),
-          opacity 0.48s ease,
-          filter 0.48s ease;
+          transform 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          filter 0.9s cubic-bezier(0.4, 0, 0.2, 1);
         will-change: transform, opacity;
       }
       .tree-stage {
@@ -253,26 +259,20 @@
         --sky-a: #e8efe4;
         --sky-b: #d5e0d2;
         position: relative;
-        flex: 1 1 auto;
-        min-height: 76px;
-        max-height: 118px;
+        min-height: 0;
         margin: 4px 0 8px;
         padding: 0;
         border: 0;
         border-radius: 22px;
-        background:
-          radial-gradient(ellipse at 50% 18%, rgba(255, 236, 180, calc(0.22 * var(--tree-vitality))), transparent 42%),
-          linear-gradient(180deg, var(--sky-a), var(--sky-b));
+        background: linear-gradient(180deg, var(--sky-a), var(--sky-b));
         color: inherit;
         cursor: pointer;
         overflow: hidden;
         box-shadow: inset 0 0 0 1px rgba(32, 37, 31, 0.06);
         transition:
-          max-height 0.72s cubic-bezier(0.22, 0.82, 0.2, 1),
-          margin 0.72s ease,
-          border-radius 0.72s ease,
-          box-shadow 0.72s ease,
-          transform 0.72s cubic-bezier(0.22, 0.82, 0.2, 1);
+          margin 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          border-radius 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          box-shadow 0.9s cubic-bezier(0.4, 0, 0.2, 1);
         -webkit-tap-highlight-color: transparent;
       }
       .tree-stage:focus-visible {
@@ -326,10 +326,14 @@
         inset: 0;
         width: 100%;
         height: 100%;
-        transform: scale(0.78) translateY(4%);
-        transform-origin: center 72%;
-        transition: transform 0.72s cubic-bezier(0.22, 0.82, 0.2, 1);
+        /* Compact preview: frame the plant/soil, clip the sun */
+        transform: scale(1.72) translateY(26%);
+        transform-origin: center 82%;
+        transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
         pointer-events: none;
+      }
+      #homePage:not(.tree-focus) .tree-frame .layer-light {
+        opacity: 0.05 !important;
       }
       .tree-frame {
         position: absolute;
@@ -337,7 +341,7 @@
         display: grid;
         place-items: center;
         opacity: 0;
-        transition: opacity 0.45s ease;
+        transition: opacity 0.55s ease;
         pointer-events: none;
       }
       .tree-frame.is-active {
@@ -354,7 +358,7 @@
       .tree-frame .layer-poison,
       .tree-frame .layer-light,
       .tree-frame .layer-soil {
-        transition: opacity 0.4s ease;
+        transition: opacity 0.45s ease;
       }
       .soil-fill {
         fill: var(--soil);
@@ -388,7 +392,11 @@
         text-align: center;
         text-transform: uppercase;
         opacity: 0.78;
-        transition: opacity 0.35s ease, color 0.35s ease;
+        transition:
+          opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          color 0.35s ease,
+          bottom 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          font-size 0.9s cubic-bezier(0.4, 0, 0.2, 1);
       }
       .tree-stage[data-health="rotten"] .tree-caption {
         color: rgba(230, 220, 200, 0.55);
@@ -403,6 +411,7 @@
         letter-spacing: 0.1em;
         text-transform: uppercase;
         opacity: 0.55;
+        transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
       }
       @keyframes tree-sway {
         0%,
@@ -413,53 +422,32 @@
           transform: rotate(0.9deg);
         }
       }
-      @keyframes sun-breathe {
-        0%,
-        100% {
-          opacity: calc(0.2 + var(--tree-vitality) * 0.55);
-        }
-        50% {
-          opacity: calc(0.35 + var(--tree-vitality) * 0.65);
-        }
-      }
       #homePage.tree-focus {
         overflow: hidden;
-      }
-      #homePage.tree-focus .home-upper,
-      #homePage.tree-focus .home-lower {
-        position: absolute;
-        left: 22px;
-        right: 22px;
-        z-index: 2;
-        pointer-events: none;
+        grid-template-rows: 0fr 1fr 0fr;
       }
       #homePage.tree-focus .home-upper {
-        top: calc(18px + env(safe-area-inset-top));
-        transform: translateY(calc(-100% - 48px));
+        transform: translateY(-18%);
         opacity: 0;
         filter: blur(2px);
+        pointer-events: none;
       }
       #homePage.tree-focus .home-lower {
-        bottom: calc(15px + env(safe-area-inset-bottom));
-        transform: translateY(calc(100% + 56px));
+        transform: translateY(18%);
         opacity: 0;
         filter: blur(2px);
+        pointer-events: none;
       }
       #homePage.tree-focus .tree-stage {
-        position: relative;
-        z-index: 1;
-        max-height: none;
-        min-height: 0;
-        flex: 1 1 auto;
-        align-self: stretch;
-        margin: 12px 0;
+        margin: 10px 0;
         border-radius: 28px;
         box-shadow:
           inset 0 0 0 1px rgba(32, 37, 31, 0.08),
           0 18px 40px rgba(20, 35, 25, 0.12);
       }
       #homePage.tree-focus .tree-canvas {
-        transform: scale(1.28) translateY(4%);
+        transform: scale(1.08) translateY(2%);
+        transform-origin: center 58%;
       }
       #homePage.tree-focus .tree-caption {
         bottom: 22px;
@@ -1187,9 +1175,8 @@
         .speech h1 {
           font-size: 26px;
         }
-        .tree-stage {
-          min-height: 64px;
-          max-height: 88px;
+        #homePage {
+          grid-template-rows: auto minmax(72px, 92px) auto;
         }
         .balance-card {
           padding-block: 17px 15px;
