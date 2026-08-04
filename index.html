@@ -234,9 +234,12 @@
       }
       /* Spiritual tree — distant on home, focus expands (open/close are reverse) */
       #homePage {
+        --upper-h: auto;
+        --lower-h: auto;
+        --tree-min: 96px;
         display: grid;
-        grid-template-rows: auto minmax(88px, 112px) auto;
-        transition: grid-template-rows 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+        grid-template-rows: var(--upper-h) minmax(var(--tree-min), 1fr) var(--lower-h);
+        transition: grid-template-rows 0.85s cubic-bezier(0.32, 0.72, 0.24, 1);
       }
       .home-upper,
       .home-lower {
@@ -424,7 +427,9 @@
       }
       #homePage.tree-focus {
         overflow: hidden;
-        grid-template-rows: 0fr 1fr 0fr;
+        --upper-h: 0px;
+        --lower-h: 0px;
+        --tree-min: 0px;
       }
       #homePage.tree-focus .home-upper {
         transform: translateY(-18%);
@@ -1176,7 +1181,7 @@
           font-size: 26px;
         }
         #homePage {
-          grid-template-rows: auto minmax(72px, 92px) auto;
+          --tree-min: 80px;
         }
         .balance-card {
           padding-block: 17px 15px;

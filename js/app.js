@@ -176,12 +176,26 @@
     $("homePage").classList.toggle("tree-focus", state.treeFocus);
   }
 
+  /** Grid rows only animate between concrete lengths, so measure the chrome. */
+  function measureHomeRows() {
+    const page = $("homePage");
+    const upper = $("homeUpper");
+    const lower = $("homeLower");
+    if (!page || !upper || !lower || state.treeFocus) return;
+    page.style.setProperty("--upper-h", `${Math.round(upper.scrollHeight)}px`);
+    page.style.setProperty("--lower-h", `${Math.round(lower.scrollHeight)}px`);
+  }
+
   function toggleTreeFocus() {
-    state.treeFocus = !state.treeFocus;
-    save();
-    renderTree();
-    if (state.settings.haptic) navigator.vibrate?.(10);
-    analytics().track(state.treeFocus ? "tree_open" : "tree_close");
+    measureHomeRows();
+    // Let the measured lengths land before flipping to the collapsed state.
+    requestAnimationFrame(() => {
+      state.treeFocus = !state.treeFocus;
+      save();
+      renderTree();
+      if (state.settings.haptic) navigator.vibrate?.(10);
+      analytics().track(state.treeFocus ? "tree_open" : "tree_close");
+    });
   }
 
   /**
@@ -658,8 +672,16 @@
     b.classList.toggle("on", Boolean(state.settings[b.dataset.setting]));
   });
 
+  window.addEventListener("resize", () => {
+    clearTimeout(measureHomeRows.timer);
+    measureHomeRows.timer = setTimeout(measureHomeRows, 150);
+  });
+
   maybeSeedDemoTree();
   Promise.resolve(window.NAFS_tree?.mount?.($("treeMount")))
     .catch(() => {})
-    .finally(() => refreshAll());
+    .finally(() => {
+      refreshAll();
+      requestAnimationFrame(measureHomeRows);
+    });
 })();
