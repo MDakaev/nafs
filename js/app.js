@@ -717,6 +717,11 @@
     const slider = $("treeDebugProgress");
     const label = $("treeDebugProgressLabel");
     const seedLabel = $("treeDebugSeed");
+    if (!slider || !label) return;
+    const growingNow = window.NAFS_tree?.getGrowing?.();
+    if (!growingNow && seedLabel) {
+      seedLabel.textContent = "tree failed to load — see console";
+    }
     const syncLabel = () => {
       const value = Number(slider.value) || 0;
       label.textContent = `${value}%`;
@@ -757,10 +762,21 @@
   }
 
   maybeSeedDemoTree();
-  Promise.resolve(window.NAFS_tree?.mount?.($("treeCanvas")))
-    .catch(() => {})
+  // Tree art can fail independently; the app and debug panel must still work.
+  let mountResult;
+  try {
+    mountResult = window.NAFS_tree?.mount?.($("treeCanvas"));
+  } catch (error) {
+    console.error("[nafs] tree mount failed", error);
+  }
+  Promise.resolve(mountResult)
+    .catch((error) => console.error("[nafs] tree mount rejected", error))
     .finally(() => {
-      refreshAll();
+      try {
+        refreshAll();
+      } catch (error) {
+        console.error("[nafs] refresh failed", error);
+      }
       setupTreeDebug();
       requestAnimationFrame(measureHomeRows);
     });
