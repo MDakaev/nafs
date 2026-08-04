@@ -100,11 +100,12 @@
       const treeW = Math.max(40, b.maxX - b.minX);
       const treeH = Math.max(40, b.maxY - b.minY);
       // Fit tree with padding; keep soil near bottom.
-      const padX = 18;
-      const padTop = 10;
-      const padBottom = 16;
-      const scale = Math.min((w - padX * 2) / treeW, (h - padTop - padBottom) / (treeH + 28));
-      const safeScale = Math.max(0.35, scale);
+      const padX = 10;
+      const padTop = 6;
+      const padBottom = 12;
+      const scale = Math.min((w - padX * 2) / treeW, (h - padTop - padBottom) / (treeH + 24));
+      // Keep a readable plant even in the compact home strip.
+      const safeScale = Math.max(h < 140 ? 0.55 : 0.4, scale * (h < 140 ? 1.15 : 1));
 
       ctx.save();
       // Origin at soil center near bottom.
