@@ -49,7 +49,8 @@
   }
   state.settings = { ...defaults.settings, ...(state.settings || {}) };
   state.lang = state.lang === "en" ? "en" : "ru";
-  state.treeFocus = Boolean(state.treeFocus);
+  // Never restore tree-focus across reloads — it can leave the home grid collapsed.
+  state.treeFocus = false;
   // Debug panel takes over progress only for the current page view.
   delete state.treeDebugOverride;
   let treeDebugOverride = false;
@@ -164,7 +165,7 @@
       poison: 0,
       health: "dormant",
       total: 0,
-      progress: 0,
+      progress: 0.01,
       seed: 12345,
     };
     const stageEl = $("treeStage");
@@ -180,45 +181,110 @@
       `${t(tree.stageKey)} · ${t(healthCaption[tree.health] || "treeHealthDormant")}`;
     stageEl.setAttribute("aria-expanded", state.treeFocus ? "true" : "false");
     stageEl.setAttribute("aria-label", state.treeFocus ? t("treeClose") : t("treeOpen"));
-    $("homePage").classList.toggle("tree-focus", state.treeFocus);
+    const home = $("homePage");
+    if (home && !home.classList.contains("rows-animating")) {
+      home.classList.toggle("tree-focus", state.treeFocus);
+    }
     // Canvas must re-measure whenever the strip changes size.
     const growing = window.NAFS_tree?.getGrowing?.();
     requestAnimationFrame(() => growing?.resize?.());
-    setTimeout(() => growing?.resize?.(), 950);
   }
 
-  /** Grid rows only animate between concrete lengths, so drive them from JS. */
-  function applyHomeRows() {
-    const page = $("homePage");
-    const upper = $("homeUpper");
-    const lower = $("homeLower");
-    if (!page || !upper || !lower) return;
-    if (state.treeFocus) {
-      page.style.setProperty("--upper-h", "0px");
-      page.style.setProperty("--lower-h", "0px");
-      page.style.setProperty("--tree-min", "0px");
-      return;
-    }
-    page.style.setProperty("--upper-h", `${Math.round(upper.scrollHeight)}px`);
-    page.style.setProperty("--lower-h", `${Math.round(lower.scrollHeight)}px`);
-    page.style.removeProperty("--tree-min");
+  /** Snapshot of compact home rows — used to reverse the focus animation. */
+  let compactHomeRows = null;
+  let treeFocusAnim = 0;
+
+  function readHomeRowHeights() {
+    return {
+      upper: Math.round($("homeUpper").getBoundingClientRect().height),
+      tree: Math.round($("treeStage").getBoundingClientRect().height),
+      lower: Math.round($("homeLower").getBoundingClientRect().height),
+    };
   }
 
-  function measureHomeRows() {
-    if (state.treeFocus) return;
-    applyHomeRows();
+  function setHomePixelRows(rows) {
+    $("homePage").style.gridTemplateRows =
+      `${rows.upper}px ${rows.tree}px ${rows.lower}px`;
   }
 
+  function clearHomePixelRows() {
+    $("homePage").style.gridTemplateRows = "";
+  }
+
+  function pulseTreeResize(durationMs) {
+    const growing = window.NAFS_tree?.getGrowing?.();
+    if (!growing) return;
+    const started = performance.now();
+    const id = ++treeFocusAnim;
+    const step = (now) => {
+      if (id !== treeFocusAnim) return;
+      growing.resize(true);
+      if (now - started < durationMs) {
+        requestAnimationFrame(step);
+      } else {
+        growing.resize(true);
+      }
+    };
+    requestAnimationFrame(step);
+  }
+
+  /** Smooth mini → full tree: animate pixel grid rows + continuous canvas fit. */
   function toggleTreeFocus() {
-    // Land concrete pixel rows first so the reverse animation matches.
-    applyHomeRows();
+    const page = $("homePage");
+    if (!page || page.classList.contains("rows-animating")) return;
+
+    const opening = !state.treeFocus;
+    const duration = 1100;
+
+    // Freeze current layout to concrete pixels (fr/auto can't interpolate).
+    const from = readHomeRowHeights();
+    page.classList.add("rows-animating");
+    setHomePixelRows(from);
+    void page.offsetHeight;
+
+    state.treeFocus = opening;
+    save();
+
+    // Sync chrome (caption/aria) without fighting the row animation.
+    const stageEl = $("treeStage");
+    if (stageEl) {
+      stageEl.setAttribute("aria-expanded", opening ? "true" : "false");
+      stageEl.setAttribute("aria-label", opening ? t("treeClose") : t("treeOpen"));
+    }
+    page.classList.toggle("tree-focus", opening);
+
+    const to = opening
+      ? {
+          upper: 0,
+          tree: from.upper + from.tree + from.lower,
+          lower: 0,
+        }
+      : compactHomeRows || {
+          upper: Math.max(120, from.tree * 0.55),
+          tree: Math.round(
+            Math.min(152, Math.max(118, window.innerHeight * 0.17))
+          ),
+          lower: Math.max(220, from.tree * 0.9),
+        };
+
+    if (opening) compactHomeRows = from;
+
+    // Double rAF so the browser commits the "from" rows before transitioning.
     requestAnimationFrame(() => {
-      state.treeFocus = !state.treeFocus;
-      save();
-      applyHomeRows();
-      renderTree();
-      if (state.settings.haptic) navigator.vibrate?.(10);
-      analytics().track(state.treeFocus ? "tree_open" : "tree_close");
+      requestAnimationFrame(() => {
+        setHomePixelRows(to);
+        pulseTreeResize(duration);
+        if (state.settings.haptic) navigator.vibrate?.(10);
+        analytics().track(opening ? "tree_open" : "tree_close");
+
+        clearTimeout(toggleTreeFocus.timer);
+        toggleTreeFocus.timer = setTimeout(() => {
+          page.classList.remove("rows-animating");
+          clearHomePixelRows();
+          window.NAFS_tree?.getGrowing?.()?.resize?.(true);
+          if (!treeDebugOverride) renderTree();
+        }, duration + 48);
+      });
     });
   }
 
@@ -607,6 +673,10 @@
   $("openMenu").addEventListener("click", () => {
     if (state.treeFocus) {
       state.treeFocus = false;
+      treeFocusAnim += 1;
+      clearTimeout(toggleTreeFocus.timer);
+      $("homePage")?.classList.remove("rows-animating", "tree-focus");
+      clearHomePixelRows();
       renderTree();
     }
     openMenu();
@@ -615,12 +685,16 @@
   $("scrim").addEventListener("click", closeLayers);
   $("backHome").addEventListener("click", () => openPage("home"));
   $("speech").addEventListener("click", nextSpeech);
+  $("speech").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      nextSpeech();
+    }
+  });
   $("treeStage").addEventListener("click", toggleTreeFocus);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.treeFocus) {
-      state.treeFocus = false;
-      save();
-      renderTree();
+      toggleTreeFocus();
     }
   });
   $("undo").addEventListener("click", undo);
@@ -648,6 +722,11 @@
   $("installBannerBtn").addEventListener("click", () => {
     analytics().track("install_click", { source: "banner" });
     openSheet("installSheet");
+  });
+  $("installBannerDismiss").addEventListener("click", () => {
+    localStorage.setItem("nafs.install.dismissed", "1");
+    $("installBanner").classList.remove("show");
+    analytics().track("install_banner_dismiss");
   });
 
   window.addEventListener("beforeinstallprompt", (event) => {
@@ -697,14 +776,18 @@
   });
 
   window.addEventListener("resize", () => {
-    clearTimeout(measureHomeRows.timer);
-    measureHomeRows.timer = setTimeout(measureHomeRows, 150);
+    clearTimeout(window.__nafsResizeTimer);
+    window.__nafsResizeTimer = setTimeout(() => {
+      window.NAFS_tree?.getGrowing?.()?.resize?.(true);
+    }, 150);
   });
 
-  /** Localhost/dev only: ?treeDebug=1 shows progress/regenerate controls. */
+  /** Dev only: ?treeDebug=1 on localhost shows progress/health controls. */
   function setupTreeDebug() {
     const params = new URLSearchParams(location.search);
-    const enabled = params.has("treeDebug");
+    const host = location.hostname;
+    const local = host === "localhost" || host === "127.0.0.1";
+    const enabled = local && params.has("treeDebug");
     const panel = $("treeDebug");
     if (!panel) return;
     if (!enabled) {
@@ -714,19 +797,72 @@
     }
     panel.hidden = false;
     panel.classList.add("show");
-    const slider = $("treeDebugProgress");
-    const label = $("treeDebugProgressLabel");
+
+    const progressSlider = $("treeDebugProgress");
+    const progressLabel = $("treeDebugProgressLabel");
+    const vitalitySlider = $("treeDebugVitality");
+    const vitalityLabel = $("treeDebugVitalityLabel");
+    const poisonSlider = $("treeDebugPoison");
+    const poisonLabel = $("treeDebugPoisonLabel");
     const seedLabel = $("treeDebugSeed");
-    const syncLabel = () => {
-      const value = Number(slider.value) || 0;
-      label.textContent = `${value}%`;
+
+    const syncProgressLabel = () => {
+      progressLabel.textContent = `${Number(progressSlider.value) || 0}%`;
     };
-    slider.addEventListener("input", () => {
+    const syncHealthLabels = () => {
+      vitalityLabel.textContent = `${Number(vitalitySlider.value) || 0}%`;
+      poisonLabel.textContent = `${Number(poisonSlider.value) || 0}%`;
+    };
+    const applyHealth = () => {
       treeDebugOverride = true;
-      syncLabel();
+      syncHealthLabels();
+      const vitality = (Number(vitalitySlider.value) || 0) / 100;
+      const poison = (Number(poisonSlider.value) || 0) / 100;
       const growing = window.NAFS_tree?.getGrowing?.();
-      growing?.setProgress(Number(slider.value) / 100);
+      growing?.setHealth(vitality, poison);
+
+      const stageEl = $("treeStage");
+      if (stageEl) {
+        stageEl.style.setProperty("--tree-vitality", String(vitality));
+        stageEl.style.setProperty("--tree-poison", String(poison));
+        const health =
+          window.NAFS_tree?.healthFromVitality?.(vitality, 1) || "mixed";
+        stageEl.dataset.health = health;
+        const caption = $("treeCaption");
+        if (caption) {
+          const stageKey =
+            stageEl.dataset.stage != null
+              ? (
+                  window.NAFS_tree?.STAGE_RULES || []
+                ).find((rule) => String(rule.id) === stageEl.dataset.stage)?.key
+              : null;
+          const healthCaption = {
+            living: "treeHealthLiving",
+            mostly: "treeHealthMostly",
+            mixed: "treeHealthMixed",
+            withered: "treeHealthWithered",
+            rotten: "treeHealthRotten",
+            dormant: "treeHealthDormant",
+          };
+          if (stageKey) {
+            caption.textContent = `${t(stageKey)} · ${t(
+              healthCaption[health] || "treeHealthDormant"
+            )}`;
+          }
+        }
+      }
+    };
+
+    progressSlider.addEventListener("input", () => {
+      treeDebugOverride = true;
+      syncProgressLabel();
+      const growing = window.NAFS_tree?.getGrowing?.();
+      growing?.setProgress((Number(progressSlider.value) || 0) / 100);
     });
+
+    vitalitySlider.addEventListener("input", applyHealth);
+    poisonSlider.addEventListener("input", applyHealth);
+
     $("treeDebugGrow").addEventListener("click", () => {
       treeDebugOverride = true;
       const growing = window.NAFS_tree?.getGrowing?.();
@@ -739,21 +875,29 @@
         const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
         const value = start + (1 - start) * eased;
         growing.setProgress(value);
-        slider.value = String(Math.round(value * 100));
-        syncLabel();
+        progressSlider.value = String(Math.round(value * 100));
+        syncProgressLabel();
         if (t < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     });
+
     $("treeDebugRegen").addEventListener("click", () => {
       treeDebugOverride = true;
       const growing = window.NAFS_tree?.getGrowing?.();
       const seed = growing?.regenerate();
       if (seedLabel) seedLabel.textContent = String(seed || "");
     });
+
     const growing = window.NAFS_tree?.getGrowing?.();
-    if (growing && seedLabel) seedLabel.textContent = String(growing.seed);
-    syncLabel();
+    if (growing) {
+      if (seedLabel) seedLabel.textContent = String(growing.seed);
+      progressSlider.value = String(Math.round((growing.progress || 0) * 100));
+      vitalitySlider.value = String(Math.round((growing.vitality ?? 0.7) * 100));
+      poisonSlider.value = String(Math.round((growing.poison ?? 0.3) * 100));
+    }
+    syncProgressLabel();
+    syncHealthLabels();
   }
 
   maybeSeedDemoTree();
@@ -762,6 +906,8 @@
     .finally(() => {
       refreshAll();
       setupTreeDebug();
-      requestAnimationFrame(measureHomeRows);
+      requestAnimationFrame(() => {
+        window.NAFS_tree?.getGrowing?.()?.resize?.(true);
+      });
     });
 })();

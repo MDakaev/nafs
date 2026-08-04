@@ -44,6 +44,13 @@
     leafAutumn: "#c56a2e",
     leafDead: "#6b4a32",
 
+    // Young sprout stem — lignifies to brown wood by ~20% progress.
+    stemGreen: "#3f7a45",
+    stemGreenLight: "#5a9458",
+    stemGreenHighlight: "#7eb86a",
+    woodRotten: "#2a2018",
+    woodRottenLight: "#3d3228",
+
     shadow: "rgba(42, 34, 24, 0.16)",
     deepShadow: "rgba(30, 23, 17, 0.24)",
 
@@ -101,44 +108,58 @@
   // COLOR UTILITIES
   // ============================================================
 
-  function parseHex(hex) {
-    if (!hex || typeof hex !== "string") {
+  function parseColor(color) {
+    if (!color || typeof color !== "string") {
       return [128, 128, 128];
     }
 
-    const value = hex.replace("#", "");
+    if (color.startsWith("#")) {
+      const value = color.slice(1);
 
-    if (value.length !== 6) {
-      return [128, 128, 128];
+      if (value.length !== 6) {
+        return [128, 128, 128];
+      }
+
+      return [
+        parseInt(value.slice(0, 2), 16),
+        parseInt(value.slice(2, 4), 16),
+        parseInt(value.slice(4, 6), 16),
+      ];
     }
 
-    return [
-      parseInt(value.slice(0, 2), 16),
-      parseInt(value.slice(2, 4), 16),
-      parseInt(value.slice(4, 6), 16),
-    ];
+    // getLeafColor chains lerpColor; intermediate results are rgb(...).
+    const match = color.match(
+      /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i
+    );
+
+    if (match) {
+      return [
+        Number(match[1]),
+        Number(match[2]),
+        Number(match[3]),
+      ];
+    }
+
+    return [128, 128, 128];
   }
 
   function lerpColor(a, b, t) {
-    if (
-      typeof a !== "string" ||
-      typeof b !== "string" ||
-      !a.startsWith("#") ||
-      !b.startsWith("#")
-    ) {
+    if (typeof a !== "string" || typeof b !== "string") {
       return t < 0.5 ? a : b;
     }
 
-    const A = parseHex(a);
-    const B = parseHex(b);
+    const canLerp = (c) =>
+      c.startsWith("#") || /^rgba?\(/i.test(c);
 
+    if (!canLerp(a) || !canLerp(b)) {
+      return t < 0.5 ? a : b;
+    }
+
+    const A = parseColor(a);
+    const B = parseColor(b);
     const amount = clamp(t);
 
-    return `rgb(
-      ${Math.round(A[0] + (B[0] - A[0]) * amount)},
-      ${Math.round(A[1] + (B[1] - A[1]) * amount)},
-      ${Math.round(A[2] + (B[2] - A[2]) * amount)}
-    )`;
+    return `rgb(${Math.round(A[0] + (B[0] - A[0]) * amount)},${Math.round(A[1] + (B[1] - A[1]) * amount)},${Math.round(A[2] + (B[2] - A[2]) * amount)})`;
   }
 
 
@@ -203,6 +224,22 @@
       colors.leafAutumn,
       colors.leafDead,
       (poison - 0.78) / 0.22
+    );
+  }
+
+
+  // ============================================================
+  // WOOD LIGNIFICATION
+  // ============================================================
+
+  /**
+   * Young growth is a green live stem at ~1% progress,
+   * then carefully lignifies to brown wood by ~20%.
+   * 0 = green sprout, 1 = mature bark.
+   */
+  function woodLignify(progress) {
+    return easeInOutCubic(
+      clamp((progress - 0.01) / 0.19)
     );
   }
 
@@ -445,71 +482,43 @@
     }
 
     const p = clamp(progress);
-
-    const target =
-      metrics.total * p;
-
+    const target = metrics.total * p;
     let travelled = 0;
 
+    const windAt = (i) =>
+      Math.sin(
+        time * 0.7 +
+        (branch.swayPhase || 0) +
+        i * 0.4
+      ) *
+      wind *
+      (i / Math.max(1, points.length - 1));
+
     ctx.moveTo(
-      points[0].x,
+      points[0].x + windAt(0),
       points[0].y
     );
 
     for (let i = 1; i < points.length; i++) {
       const a = points[i - 1];
       const b = points[i];
+      const segment = metrics.lengths[i - 1];
 
-      const segment =
-        metrics.lengths[i - 1];
-
-      if (
-        travelled + segment <= target
-      ) {
-        const wa =
-          Math.sin(
-            time * 0.7 +
-            (branch.swayPhase || 0) +
-            i * 0.4
-          ) *
-          wind *
-          (i / points.length);
-
-        ctx.lineTo(
-          a.x + wa,
-          a.y
-        );
-
-        ctx.lineTo(
-          b.x + wa,
-          b.y
-        );
-
+      if (travelled + segment <= target) {
+        // Only advance to segment end — re-stroking `a` added a wind kink.
+        ctx.lineTo(b.x + windAt(i), b.y);
         travelled += segment;
         continue;
       }
 
-      const remaining =
-        target - travelled;
-
+      const remaining = target - travelled;
       const local =
         segment <= 0
           ? 0
-          : clamp(
-              remaining / segment
-            );
-
-      const wa =
-        Math.sin(
-          time * 0.7 +
-          (branch.swayPhase || 0) +
-          i * 0.4
-        ) *
-        wind *
-        (i / points.length);
+          : clamp(remaining / segment);
 
       ctx.lineTo(
-        lerp(a.x, b.x, local) + wa,
+        lerp(a.x, b.x, local) + windAt(i),
         lerp(a.y, b.y, local)
       );
 
@@ -662,6 +671,294 @@
     }
 
     ctx.restore();
+  }
+
+
+  // ============================================================
+  // FULL-BLEED SOIL (focus mode, screen space)
+  // ============================================================
+
+  /**
+   * Wide ground band across the canvas. Height matches the old mound;
+   * width fills the stage (used in tree-focus).
+   */
+  function drawFullBleedSoil(
+    ctx,
+    width,
+    height,
+    groundY,
+    colors,
+    vitality,
+    progress,
+    alpha = 1
+  ) {
+    const soil = lerpColor(
+      colors.soilDark,
+      colors.soil,
+      clamp(vitality)
+    );
+
+    const visibility = clamp(0.4 + progress * 0.6) * clamp(alpha);
+    const soilH = Math.max(34, Math.min(78, height * 0.145));
+    const crest = groundY - soilH * 0.42;
+
+    ctx.save();
+    ctx.globalAlpha = visibility;
+
+    // Soft contact shadow under the soil lip.
+    ctx.fillStyle = colors.deepShadow;
+    ctx.beginPath();
+    ctx.ellipse(
+      width * 0.5,
+      groundY + soilH * 0.18,
+      width * 0.48,
+      soilH * 0.22,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    // Full-width ground with a gentle living crest.
+    ctx.fillStyle = soil;
+    ctx.beginPath();
+    ctx.moveTo(0, height + 2);
+    ctx.lineTo(0, groundY + 6);
+    ctx.quadraticCurveTo(
+      width * 0.18,
+      crest,
+      width * 0.5,
+      crest + soilH * 0.08
+    );
+    ctx.quadraticCurveTo(
+      width * 0.82,
+      crest,
+      width,
+      groundY + 6
+    );
+    ctx.lineTo(width, height + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ridge highlight.
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY + 4);
+    ctx.quadraticCurveTo(
+      width * 0.5,
+      crest + soilH * 0.2,
+      width,
+      groundY + 4
+    );
+    ctx.stroke();
+
+    // Sparse grit.
+    if (progress > 0.08) {
+      ctx.fillStyle = colors.soilLight;
+      ctx.globalAlpha = 0.14 * clamp(vitality);
+      for (let i = 0; i < 28; i += 1) {
+        const x = ((i * 97.3) % 1) * width;
+        const y =
+          groundY -
+          soilH * 0.15 +
+          ((i * 41.7) % 1) * soilH * 0.55;
+        ctx.beginPath();
+        ctx.arc(x, y, 0.6 + (i % 3) * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  }
+
+
+  // ============================================================
+  // PULSING SUN + CLOUDS (screen space)
+  // ============================================================
+
+  function drawCloudPuff(ctx, x, y, scale, alpha, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale * 0.78);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+
+    ctx.beginPath();
+    ctx.arc(-18, 4, 14, 0, Math.PI * 2);
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.arc(16, 3, 13, 0, Math.PI * 2);
+    ctx.arc(4, -8, 11, 0, Math.PI * 2);
+    ctx.arc(-8, -4, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /**
+   * Sun dims as Nafs/poison rises; clouds drift in and veil it.
+   */
+  function drawSun(
+    ctx,
+    width,
+    height,
+    time,
+    vitality,
+    progress,
+    poison = 0
+  ) {
+    if (progress < 0.01) return;
+
+    poison = clamp(poison);
+    vitality = clamp(vitality);
+
+    const pulse =
+      0.88 +
+      Math.sin(time * 1.35) * 0.12 +
+      Math.sin(time * 0.55) * 0.04;
+
+    // High Nafs kills brightness; vitality keeps a little warmth.
+    const clarity = clamp(1 - poison * 0.92 + vitality * 0.08);
+    const dim = clamp(0.18 + clarity * 0.82);
+
+    const x = width * 0.78;
+    const y = height * 0.13;
+    const baseR = Math.min(width, height) * 0.075;
+    const r = baseR * (0.92 + pulse * 0.08);
+    const glow = clamp(0.2 + vitality * 0.45) * dim;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Soft halo — fades hard under heavy poison.
+    const halo = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 3.2);
+    halo.addColorStop(
+      0,
+      `rgba(255, 214, 120, ${0.3 * glow * pulse})`
+    );
+    halo.addColorStop(
+      0.45,
+      `rgba(255, 196, 90, ${0.12 * glow})`
+    );
+    halo.addColorStop(1, "rgba(255, 196, 90, 0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rays shrink/fade with poison.
+    const rayAlpha = 0.18 * glow * pulse * clarity;
+    if (rayAlpha > 0.02) {
+      const rayCount = 10;
+      ctx.strokeStyle = `rgba(255, 210, 110, ${rayAlpha})`;
+      ctx.lineWidth = Math.max(1, r * 0.08);
+      ctx.lineCap = "round";
+      for (let i = 0; i < rayCount; i += 1) {
+        const a =
+          (i / rayCount) * Math.PI * 2 +
+          time * 0.12;
+        const inner = r * 1.25;
+        const outer =
+          r *
+          (1.55 + clarity * 0.45 + Math.sin(time * 2 + i) * 0.14);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+        ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+        ctx.stroke();
+      }
+    }
+
+    // Core — shifts cooler/greyer as poison rises.
+    const core = ctx.createRadialGradient(
+      -r * 0.2,
+      -r * 0.25,
+      r * 0.1,
+      0,
+      0,
+      r
+    );
+    const hot = lerpColor("#fff6d2", "#d8d2c4", poison * 0.85);
+    const mid = lerpColor("#ffd56a", "#9a9488", poison * 0.9);
+    const rim = lerpColor("#e8a83a", "#6a6560", poison * 0.95);
+    core.addColorStop(0, hot);
+    core.addColorStop(0.45, mid);
+    core.addColorStop(1, rim);
+
+    ctx.globalAlpha = (0.35 + glow * 0.5) * dim;
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Clouds gather over the sun as Nafs grows.
+    const cover = clamp((poison - 0.08) / 0.72);
+    if (cover <= 0.01) return;
+
+    const drift = Math.sin(time * 0.35) * (8 + cover * 10);
+    const cloudColor = lerpColor(
+      "#f2efe6",
+      "#7a7670",
+      poison * 0.75
+    );
+    const cloudShade = lerpColor(
+      "#e4dfd4",
+      "#5c5854",
+      poison * 0.8
+    );
+
+    const puffs = [
+      { x: -42, y: 6, s: 1.05, phase: 0.0, tint: cloudColor },
+      { x: -8, y: -4, s: 1.25, phase: 1.1, tint: cloudShade },
+      { x: 28, y: 8, s: 1.1, phase: 2.0, tint: cloudColor },
+      { x: 52, y: -2, s: 0.9, phase: 2.7, tint: cloudShade },
+      { x: -58, y: -10, s: 0.85, phase: 0.6, tint: cloudShade },
+    ];
+
+    const scaleBase = Math.min(width, height) / 280;
+
+    puffs.forEach((puff, index) => {
+      // Heavier Nafs → more puffs opaque and overlapping the disc.
+      const show = clamp(cover * 1.35 - index * 0.12);
+      if (show <= 0.02) return;
+
+      const bob =
+        Math.sin(time * 0.7 + puff.phase) * (2 + cover * 3);
+
+      drawCloudPuff(
+        ctx,
+        x + puff.x * scaleBase + drift * (0.4 + index * 0.12),
+        y + puff.y * scaleBase + bob,
+        puff.s * scaleBase * (0.95 + cover * 0.35),
+        show * (0.45 + poison * 0.5),
+        puff.tint
+      );
+    });
+
+    // Final veil so the sun almost vanishes at max poison.
+    if (cover > 0.55) {
+      ctx.save();
+      const veil = ctx.createRadialGradient(
+        x,
+        y,
+        r * 0.4,
+        x,
+        y,
+        r * 4
+      );
+      const veilAlpha = (cover - 0.55) / 0.45;
+      veil.addColorStop(
+        0,
+        `rgba(90, 88, 84, ${0.22 * veilAlpha})`
+      );
+      veil.addColorStop(1, "rgba(90, 88, 84, 0)");
+      ctx.fillStyle = veil;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
 
@@ -889,7 +1186,9 @@
     time,
     colors,
     windStrength,
-    tips
+    tips,
+    vitality,
+    poison
   ) {
     const local =
       branchProgress(
@@ -910,22 +1209,33 @@
       y: branch.startY,
     };
 
+    let parentState = null;
+
     if (branch.parent != null) {
-      const parent =
-        tips.get(branch.parent);
+      parentState = tips.get(branch.parent);
 
-      if (!parent) {
+      if (!parentState || !parentState.shiftedPoints) {
         return null;
       }
 
-      // Branches start after their parent has mostly formed.
-      if (parent.local < 0.72) {
+      const attachT = clamp(
+        Number(branch.attachT) || 1
+      );
+
+      // Wait until the parent has grown to this fork.
+      if (parentState.local < attachT * 0.9) {
         return null;
       }
+
+      const attach = pointOnPolyline(
+        parentState.shiftedPoints,
+        parentState.shiftedMetrics,
+        Math.min(parentState.local, attachT)
+      );
 
       start = {
-        x: parent.tip.x,
-        y: parent.tip.y,
+        x: attach.x,
+        y: attach.y,
       };
     }
 
@@ -958,19 +1268,8 @@
         windStrength
       );
 
-    // ----------------------------------------------------------
-    // Find current tip.
-    // ----------------------------------------------------------
-
-    const grownTip =
-      pointOnPolyline(
-        points,
-        metrics,
-        local
-      );
-
     // Offset generated geometry so children remain attached
-    // to the actual parent tip.
+    // to the live fork on the parent (not always the tip).
     const dx =
       start.x -
       branch.startX;
@@ -1020,23 +1319,55 @@
       );
 
     // ----------------------------------------------------------
-    // Color
+    // Color — green sprout stem → brown wood by 20% progress
     // ----------------------------------------------------------
 
-    let color;
+    let wood;
 
     if (depth === 0) {
-      color = colors.trunk;
+      wood = colors.trunk;
     } else if (depth <= 2) {
-      color =
-        lerpColor(
-          colors.trunk,
-          colors.branch,
-          0.35
-        );
+      wood = lerpColor(
+        colors.trunk,
+        colors.branch,
+        0.35
+      );
     } else {
-      color = colors.branch;
+      wood = colors.branch;
     }
+
+    const lignify = woodLignify(progress);
+
+    const greenStem =
+      depth === 0
+        ? colors.stemGreen
+        : depth <= 2
+          ? lerpColor(
+              colors.stemGreen,
+              colors.stemGreenLight,
+              0.45
+            )
+          : colors.stemGreenLight;
+
+    // Live green sprout → brown wood, then rot toward dead bark if poison leads.
+    let color = lerpColor(greenStem, wood, lignify);
+
+    const rot = clamp(poison * 0.85 - vitality * 0.35);
+    if (rot > 0.02) {
+      color = lerpColor(
+        color,
+        depth === 0 ? colors.woodRotten : colors.woodRottenLight,
+        easeInOutCubic(rot)
+      );
+    }
+
+    const barkHighlight = lerpColor(
+      colors.stemGreenHighlight,
+      depth === 0
+        ? colors.trunkHighlight
+        : colors.branchLight,
+      lignify
+    );
 
     // ----------------------------------------------------------
     // Draw
@@ -1078,10 +1409,7 @@
       depth <= 2 &&
       local > 0.18
     ) {
-      ctx.strokeStyle =
-        depth === 0
-          ? colors.trunkHighlight
-          : colors.branchLight;
+      ctx.strokeStyle = barkHighlight;
 
       ctx.globalAlpha =
         depth === 0
@@ -1145,6 +1473,10 @@
       tip,
       local,
       start,
+      dx,
+      dy,
+      shiftedPoints,
+      shiftedMetrics,
       sway: wind,
     };
 
@@ -1158,63 +1490,76 @@
 
 
   // ============================================================
-  // LEAF REVEAL
+  // LEAF CONDITION / REVEAL
   // ============================================================
 
-  function leafReveal(
-    leaf,
-    cluster,
-    progress
-  ) {
-    const start =
-      Number(
-        cluster.growthStart
-      ) || 0;
+  /**
+   * Per-leaf sickness from Iman/Nafs balance + leaf variation.
+   * Higher Nafs vs Iman → more likely diseased.
+   */
+  function getLeafCondition(leaf, vitality, poison) {
+    const tint = Number(leaf.tint) || 0;
+    const shape = Number(leaf.shape) || 0;
+    const phase = Number(leaf.phase) || 0;
 
-    const end =
-      Number(
-        cluster.growthEnd
-      ) ||
-      start + 0.12;
+    const seed =
+      typeof leaf.conditionSeed === "number"
+        ? leaf.conditionSeed
+        : (tint * 0.63 + shape * 0.21 + phase * 0.17) % 1;
 
-    const span =
-      Math.max(
-        0.0001,
-        end - start
-      );
+    // Poison pulls toward disease; vitality pulls toward health.
+    const spiritualBalance = poison - vitality;
+    const variation = (seed - 0.5) * 0.22;
 
-    const raw =
-      clamp(
-        (progress - start) /
-        span
-      );
+    return clamp(
+      0.5 +
+      spiritualBalance * 0.95 +
+      variation
+    );
+  }
 
-    const local =
-      easeOutCubic(raw);
+  /**
+   * Leaves can start as soon as the twig begins forming.
+   * branchProgress: 0 = no branch, 1 = fully grown.
+   */
+  function leafReveal(leaf, cluster, progress, branchProgress) {
+    const clusterStart = Number(cluster.growthStart) || 0;
+    const clusterEnd =
+      Number(cluster.growthEnd) ||
+      clusterStart + 0.12;
 
-    // Small botanical "unfold".
+    const earlyPull =
+      cluster.earlyPull != null
+        ? Number(cluster.earlyPull)
+        : 0.16;
+
+    // Sprout clusters use earlyPull: 0 so they open right at growthStart (5%).
+    const earlyStart = Math.max(0, clusterStart - earlyPull);
+    const span = Math.max(0.08, clusterEnd - earlyStart);
+    const raw = clamp((progress - earlyStart) / span);
+
+    // Also gate on how far the parent branch has grown.
+    const branchFactor = clamp(
+      ((Number(branchProgress) || 0) - 0.05) / 0.45
+    );
+
+    const local = easeOutCubic(raw) * branchFactor;
+
+    if (local <= 0) {
+      return { local: 0, scale: 0, opacity: 0 };
+    }
+
+    // Soft unfold: 0 → 1.12 → 1
     let scale;
-
     if (local < 0.65) {
-      scale =
-        (local / 0.65) *
-        1.12;
+      scale = (local / 0.65) * 1.12;
     } else {
-      scale =
-        1.12 -
-        (
-          (local - 0.65) /
-          0.35
-        ) *
-        0.12;
+      scale = 1.12 - ((local - 0.65) / 0.35) * 0.12;
     }
 
     return {
       local,
-      scale: Math.max(
-        0,
-        scale
-      ),
+      scale: Math.max(0, scale),
       opacity: local,
     };
   }
@@ -1237,214 +1582,103 @@
     poison,
     windStrength
   ) {
-    if (
-      !branchState ||
-      branchState.local < 0.2
-    ) {
+    if (!branchState || branchState.local < 0.2) {
       return;
     }
 
-    const reveal =
-  leafReveal(
-    leaf,
-    cluster,
-    progress,
-    branchState.local
-  );
+    const reveal = leafReveal(
+      leaf,
+      cluster,
+      progress,
+      branchState.local
+    );
 
-    if (
-      reveal.opacity <= 0.01
-    ) {
+    if (reveal.opacity <= 0.01) {
       return;
     }
 
-    // ----------------------------------------------------------
-    // Cluster position
-    // ----------------------------------------------------------
+    // Follow the same parent-attachment shift as the drawn branch.
+    const dx = branchState.dx || 0;
+    const dy = branchState.dy || 0;
 
-    const clusterX =
-      cluster.x;
-
-    const clusterY =
-      cluster.y;
-
-    const leafX =
-      clusterX +
-      leaf.x;
-
-    const leafY =
-      clusterY +
-      leaf.y;
-
-    // ----------------------------------------------------------
-    // Wind
-    // ----------------------------------------------------------
+    const leafX = cluster.x + leaf.x + dx;
+    const leafY = cluster.y + leaf.y + dy;
 
     const leafWind =
-      Math.sin(
-        time * 1.25 +
-        leaf.phase
-      ) *
-      (
-        0.035 +
-        (cluster.windSensitivity || 0.5) *
-        0.045
-      ) *
+      Math.sin(time * 1.25 + (leaf.phase || 0)) *
+      (0.035 + (cluster.windSensitivity || 0.5) * 0.045) *
       windStrength;
 
-    // ----------------------------------------------------------
-    // Color
-    // ----------------------------------------------------------
+    const condition = getLeafCondition(leaf, vitality, poison);
 
-    function getLeafCondition(
-  leaf,
-  cluster,
-  vitality,
-  poison
-) {
-  const seed =
-    typeof leaf.conditionSeed === "number"
-      ? leaf.conditionSeed
-      : (
-          leaf.tint * 0.63 +
-          leaf.shape * 0.21 +
-          (leaf.phase || 0) * 0.17
-        ) % 1;
+    // Very early sprout stays greener; after ~8% health colors apply fully.
+    const healthBlend = clamp((progress - 0.05) / 0.08);
+    const leafPoison = lerp(
+      Math.min(condition, 0.15),
+      condition,
+      healthBlend
+    );
+    const leafVitality = lerp(
+      Math.max(vitality, 0.75),
+      vitality,
+      healthBlend
+    );
 
-  /*
-   * Чем выше Nafs относительно Iman,
-   * тем больше вероятность болезни.
-   */
-  const spiritualBalance =
-    poison - vitality;
+    const fill = getLeafColor(
+      colors,
+      Number(leaf.tint) || 0,
+      leafVitality,
+      leafPoison
+    );
 
-  /*
-   * Индивидуальная случайность.
-   */
-  const variation =
-    (seed - 0.5) * 0.38;
-
-  return clamp(
-    0.5 +
-    spiritualBalance * 0.72 +
-    variation
-  );
-}
-
-    // ----------------------------------------------------------
-    // Shape
-    // ----------------------------------------------------------
-
-    const baseWidth =
-      4.8 +
-      leaf.shape * 2.5;
-
-    const baseHeight =
-      3.1 +
-      (1 - leaf.shape) * 1.7;
-
-    const scale =
-      reveal.scale *
-      (leaf.scale || 1);
+    const baseWidth = 4.8 + (Number(leaf.shape) || 0) * 2.5;
+    const baseHeight = 3.1 + (1 - (Number(leaf.shape) || 0)) * 1.7;
+    const scale = reveal.scale * (leaf.scale || 1);
 
     ctx.save();
 
-    ctx.translate(
-      leafX,
-      leafY
-    );
-
-    ctx.rotate(
-      (leaf.rotation || 0) +
-      leafWind
-    );
-
-    ctx.scale(
-      scale,
-      scale *
-      (leaf.stretch || 1)
-    );
+    ctx.translate(leafX, leafY);
+    ctx.rotate((leaf.rotation || 0) + leafWind);
+    ctx.scale(scale, scale * (leaf.stretch || 1));
 
     ctx.globalAlpha =
-      reveal.opacity *
-      (
-        0.80 +
-        vitality * 0.20
-      );
+      reveal.opacity * (0.8 + vitality * 0.2);
 
-    ctx.fillStyle =
-      fill;
-
-    // ----------------------------------------------------------
-    // Leaf body
-    // ----------------------------------------------------------
+    ctx.fillStyle = fill;
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      0,
-      0
-    );
-
+    ctx.moveTo(0, 0);
     ctx.bezierCurveTo(
-      baseWidth * 0.30,
+      baseWidth * 0.3,
       -baseHeight * 0.88,
-
       baseWidth * 0.82,
       -baseHeight * 0.42,
-
       baseWidth,
       0
     );
-
     ctx.bezierCurveTo(
       baseWidth * 0.82,
       baseHeight * 0.45,
-
       baseWidth * 0.28,
       baseHeight * 0.78,
-
       0,
       0
     );
-
     ctx.closePath();
-
     ctx.fill();
 
-    // ----------------------------------------------------------
-    // Leaf vein
-    // ----------------------------------------------------------
-
-    if (
-      vitality > 0.45 &&
-      poison < 0.55
-    ) {
-      ctx.strokeStyle =
-        colors.leafHighlight;
-
-      ctx.globalAlpha =
-        reveal.opacity *
-        0.24 *
-        vitality;
-
-      ctx.lineWidth =
-        0.42;
-
+    if (vitality > 0.45 && leafPoison < 0.55) {
+      ctx.strokeStyle = colors.leafHighlight;
+      ctx.globalAlpha = reveal.opacity * 0.24 * vitality;
+      ctx.lineWidth = 0.42;
       ctx.beginPath();
-
-      ctx.moveTo(
-        0.3,
-        0
-      );
-
+      ctx.moveTo(0.3, 0);
       ctx.quadraticCurveTo(
         baseWidth * 0.46,
         -0.15,
         baseWidth * 0.88,
         0.02
       );
-
       ctx.stroke();
     }
 
@@ -1468,191 +1702,75 @@
     poison,
     windStrength
   ) {
-    if (
-      !branchState ||
-      branchState.local < 0.05
-    ) {
+    if (!branchState || branchState.local < 0.05) {
       return;
     }
 
-    const reveal =
-      clamp(
-        (
-          progress -
-          cluster.growthStart
-        ) /
-        Math.max(
-          0.0001,
-          cluster.growthEnd -
-          cluster.growthStart
-        )
-      );
+    const clusterStart = Number(cluster.growthStart) || 0;
+    const clusterEnd =
+      Number(cluster.growthEnd) ||
+      clusterStart + 0.12;
+
+    const earlyPull =
+      cluster.earlyPull != null
+        ? Number(cluster.earlyPull)
+        : 0.16;
+
+    // Match leafReveal window so shadow shows with first leaves.
+    const earlyStart = Math.max(0, clusterStart - earlyPull);
+    const reveal = clamp(
+      (progress - earlyStart) /
+      Math.max(0.08, clusterEnd - earlyStart)
+    );
 
     if (reveal <= 0) {
       return;
     }
 
-    // ----------------------------------------------------------
-    // Cluster shadow
-    // ----------------------------------------------------------
-
     const shadowAlpha =
-      easeOutCubic(
-        reveal
-      ) *
-      0.07 *
-      vitality;
+      easeOutCubic(reveal) * 0.07 * vitality;
+
+    // Cluster shadow follows the shifted branch, same as leaves.
+    const dx = branchState.dx || 0;
+    const dy = branchState.dy || 0;
 
     if (shadowAlpha > 0.001) {
       ctx.save();
-
-      ctx.globalAlpha =
-        shadowAlpha;
-
-      ctx.fillStyle =
-        colors.deepShadow;
-
+      ctx.globalAlpha = shadowAlpha;
+      ctx.fillStyle = colors.deepShadow;
       ctx.beginPath();
-
       ctx.ellipse(
-        cluster.x + 2,
-        cluster.y + 3,
-        cluster.radius * 0.9,
-        cluster.radius * 0.55,
+        cluster.x + dx + 2,
+        cluster.y + dy + 3,
+        (cluster.radius || 8) * 0.9,
+        (cluster.radius || 8) * 0.55,
         0,
         0,
         Math.PI * 2
       );
-
       ctx.fill();
-
       ctx.restore();
     }
 
-    // ----------------------------------------------------------
-    // Leaves
-    // ----------------------------------------------------------
-
-    if (
-      Array.isArray(
-        cluster.leaves
-      )
-    ) {
-      cluster.leaves.forEach(
-        (leaf) => {
-          function leafReveal(
-  leaf,
-  cluster,
-  progress,
-  branchProgress
-) {
-  /*
-   * Листья начинают появляться уже тогда,
-   * когда веточка только начинает формироваться.
-   *
-   * branchProgress:
-   * 0    = ветки нет
-   * 1    = ветка полностью выросла
-   */
-
-  const clusterStart =
-    Number(cluster.growthStart) || 0;
-
-  const clusterEnd =
-    Number(cluster.growthEnd) ||
-    clusterStart + 0.12;
-
-  /*
-   * Не ждём полного роста ветки.
-   *
-   * Чем раньше появляется ветка,
-   * тем раньше может начать раскрываться лист.
-   */
-  const earlyStart =
-    Math.max(
-      0,
-      clusterStart - 0.16
-    );
-
-  const span =
-    Math.max(
-      0.08,
-      clusterEnd - earlyStart
-    );
-
-  const raw =
-    clamp(
-      (progress - earlyStart) /
-      span
-    );
-
-  /*
-   * Дополнительно ограничиваем появление
-   * текущим ростом самой ветки.
-   */
-  const branchFactor =
-    clamp(
-      (branchProgress - 0.05) /
-      0.45
-    );
-
-  const local =
-    easeOutCubic(
-      raw
-    ) *
-    branchFactor;
-
-  if (local <= 0) {
-    return {
-      local: 0,
-      scale: 0,
-      opacity: 0,
-    };
-  }
-
-  /*
-   * Маленький "раскрывшийся" лист:
-   *
-   * 0 → 1.12 → 1
-   */
-  let scale;
-
-  if (local < 0.65) {
-    scale =
-      (local / 0.65) *
-      1.12;
-  } else {
-    scale =
-      1.12 -
-      (
-        (local - 0.65) /
-        0.35
-      ) *
-      0.12;
-  }
-
-  return {
-    local,
-    scale: Math.max(0, scale),
-    opacity: local,
-  };
-}
-          drawSingleLeaf(
-            ctx,
-            leaf,
-            cluster,
-            branch,
-            branchState,
-            progress,
-            time,
-            colors,
-            vitality,
-            poison,
-            windStrength
-          );
-        }
-      );
+    if (!Array.isArray(cluster.leaves)) {
+      return;
     }
+
+    cluster.leaves.forEach((leaf) => {
+      drawSingleLeaf(
+        ctx,
+        leaf,
+        cluster,
+        branch,
+        branchState,
+        progress,
+        time,
+        colors,
+        vitality,
+        poison,
+        windStrength
+      );
+    });
   }
 
 
@@ -1907,34 +2025,27 @@
       return;
     }
 
-    const progress =
-      clamp(
-        Number(
-          options.progress
-        ) || 0
-      );
+    const progress = clamp(
+      Number.isFinite(Number(options.progress))
+        ? Number(options.progress)
+        : 0
+    );
 
-    const time =
-      Number(
-        options.time
-      ) || 0;
+    const time = Number(options.time) || 0;
 
-    const animated =
-      options.animated !== false;
+    const animated = options.animated !== false;
 
-    const vitality =
-      clamp(
-        Number(
-          options.vitality
-        ) || 0
-      );
+    const vitality = clamp(
+      Number.isFinite(Number(options.vitality))
+        ? Number(options.vitality)
+        : 0.7
+    );
 
-    const poison =
-      clamp(
-        Number(
-          options.poison
-        ) || 0
-      );
+    const poison = clamp(
+      Number.isFinite(Number(options.poison))
+        ? Number(options.poison)
+        : 0.3
+    );
 
     const windStrength =
       animated
@@ -1972,12 +2083,14 @@
     // Ground
     // ----------------------------------------------------------
 
-    drawSoil(
-      ctx,
-      colors,
-      vitality,
-      progress
-    );
+    if (!options.skipSoil) {
+      drawSoil(
+        ctx,
+        colors,
+        vitality,
+        progress
+      );
+    }
 
     // ----------------------------------------------------------
     // Seed
@@ -2056,7 +2169,9 @@
           time,
           colors,
           windStrength,
-          tips
+          tips,
+          vitality,
+          poison
         );
       }
     );
@@ -2157,6 +2272,10 @@
     getLeafColor,
 
     pointOnPolyline,
+
+    drawSun,
+
+    drawFullBleedSoil,
   };
 
 })();

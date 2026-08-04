@@ -18,7 +18,7 @@
 
   /** Discrete milestones → continuous growth curve. */
   const GROWTH_MARKS = [
-    { day: 0, progress: 0 },
+    { day: 0, progress: 0.01 },
     { day: 1, progress: 0.08 },
     { day: 2, progress: 0.2 },
     { day: 3, progress: 0.32 },
@@ -26,6 +26,9 @@
     { day: 30, progress: 0.74 },
     { day: 180, progress: 1 },
   ];
+
+  /** Baseline for a brand-new user — soil + faint life, not a blank canvas. */
+  const DORMANT_PROGRESS = 0.01;
 
   function parseDay(key) {
     const [y, m, d] = String(key).split("-").map(Number);
@@ -75,7 +78,7 @@
   }
 
   function progressFromJourneyDay(journeyDay, hasMarks) {
-    if (!hasMarks) return 0;
+    if (!hasMarks) return DORMANT_PROGRESS;
     const day = Math.max(0, journeyDay);
     for (let i = 0; i < GROWTH_MARKS.length - 1; i += 1) {
       const a = GROWTH_MARKS[i];
@@ -118,7 +121,7 @@
           stage = STAGE_RULES.find((rule) => rule.id === n) || stage;
           progress = GROWTH_MARKS.find((mark) => mark.day === (STAGE_RULES[n]?.minDay || 0))?.progress;
           if (progress == null) {
-            const map = [0, 0.08, 0.2, 0.32, 0.52, 0.74, 1];
+            const map = [0.01, 0.08, 0.2, 0.32, 0.52, 0.74, 1];
             progress = map[n] ?? progress;
           }
         }
@@ -136,7 +139,8 @@
       }
     }
 
-    const health = healthFromVitality(vitality, total || (progress > 0 ? 1 : 0));
+    const health =
+      total > 0 ? healthFromVitality(vitality, total) : "dormant";
     const seed = hashSeed(firstKey || "nafs-seed");
 
     return {
@@ -164,21 +168,27 @@
       growing.destroy();
       growing = null;
     }
+    // Match empty-state compute so the first rAF frame isn't a health flash.
     growing = new window.GrowingTree({
       canvas,
-      progress: 0,
+      progress: DORMANT_PROGRESS,
       seed: 12345,
       animated: true,
-      vitality: 0.7,
-      poison: 0.3,
+      vitality: 0.5,
+      poison: 0,
     });
     return true;
   }
 
   function paint(tree) {
     if (!growing) return;
-    growing.setProgress(tree.progress ?? 0);
-    growing.setHealth(tree.vitality ?? 0.5, tree.poison ?? 0.5);
+    growing.setProgress(
+      Number.isFinite(tree.progress) ? tree.progress : DORMANT_PROGRESS
+    );
+    growing.setHealth(
+      Number.isFinite(tree.vitality) ? tree.vitality : 0.5,
+      Number.isFinite(tree.poison) ? tree.poison : 0
+    );
     if (tree.seed && tree.seed !== growing.seed) {
       growing.regenerate(tree.seed);
     }

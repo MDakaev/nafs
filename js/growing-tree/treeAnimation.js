@@ -13,6 +13,29 @@
   const generateTree = (...args) => window.NAFS_treeGenerator.generateTree(...args);
   const renderer = () => window.NAFS_treeRenderer;
 
+  /** Visual size: sprout → mini tree → adult. Structure is already early. */
+  function silhouetteScale(progress) {
+    const p = renderer().clamp(progress, 0, 1);
+    const ease = renderer().easeOutCubic;
+    if (p <= 0.01) return 0.26;
+    if (p < 0.1) {
+      return 0.26 + (0.48 - 0.26) * ease((p - 0.01) / 0.09);
+    }
+    if (p < 0.2) {
+      return 0.48 + (0.68 - 0.48) * ease((p - 0.1) / 0.1);
+    }
+    return 0.68 + (1 - 0.68) * ease((p - 0.2) / 0.8);
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function smoothstep(edge0, edge1, x) {
+    const t = renderer().clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+
   class GrowingTree {
     constructor(options = {}) {
       this.canvas = options.canvas;
@@ -50,13 +73,21 @@
 
     setProgress(value) {
       this.progress = renderer().clamp(value, 0, 1);
-      if (!this.animated) this.draw();
+      this.draw();
     }
 
     setHealth(vitality, poison) {
-      this.vitality = renderer().clamp(vitality ?? this.vitality, 0, 1);
-      this.poison = renderer().clamp(poison ?? this.poison, 0, 1);
-      if (!this.animated) this.draw();
+      this.vitality = renderer().clamp(
+        vitality == null ? this.vitality : vitality,
+        0,
+        1
+      );
+      this.poison = renderer().clamp(
+        poison == null ? this.poison : poison,
+        0,
+        1
+      );
+      this.draw();
     }
 
     regenerate(seed) {
@@ -95,30 +126,72 @@
       const h = this._height;
       ctx.clearRect(0, 0, w, h);
 
+      // Blend mini ↔ focus from live stage height so framing eases with the
+      // grid animation instead of snapping when .tree-focus toggles.
+      const page = this.canvas.closest?.("#homePage");
+      const pageH = Math.max(h, page?.clientHeight || h);
+      const compactH = Math.min(152, Math.max(118, pageH * 0.17));
+      const expandH = Math.max(compactH + 100, pageH * 0.55);
+      const focusT = smoothstep(compactH + 4, expandH, h);
+
       const b = this.model.bounds;
       const treeW = Math.max(40, b.maxX - b.minX);
       const treeH = Math.max(40, b.maxY - b.minY);
-      const soilRoom = 16;
-      const padX = 8;
-      const padTop = 6;
-      const padBottom = Math.min(14, Math.max(6, h * 0.06));
-      // Always fit the whole silhouette; the strip is short, so height rules.
-      const scale = Math.min(
+      const soilRoom = lerp(16, 28, focusT);
+      const padX = lerp(8, 12, focusT);
+      const padTop = lerp(6, 18, focusT);
+      const padBottomMini = Math.min(14, Math.max(6, h * 0.06));
+      const padBottomFocus = Math.min(36, Math.max(18, h * 0.08));
+      const padBottom = lerp(padBottomMini, padBottomFocus, focusT);
+
+      // Fit full adult silhouette, then shrink by growth phase:
+      // 1–10% sprout → 10–20% mini tree → later full size.
+      const fitScale = Math.min(
         (w - padX * 2) / treeW,
         (h - padTop - padBottom - soilRoom) / treeH
       );
-      const safeScale = Math.max(0.12, scale);
+      const sil = silhouetteScale(this.progress);
+      const safeScale = Math.max(0.08, fitScale * sil);
+      const groundY = h - padBottom;
+
+      const api = renderer();
+
+      // Sky sun — dims + gathers clouds as Nafs/poison rises.
+      api.drawSun(
+        ctx,
+        w,
+        h,
+        this._time,
+        this.vitality,
+        this.progress,
+        this.poison
+      );
+
+      // Full-bleed soil fades in as the stage grows.
+      if (focusT > 0.02) {
+        api.drawFullBleedSoil(
+          ctx,
+          w,
+          h,
+          groundY,
+          { ...api.DEFAULT_COLORS, ...(this.colors || {}) },
+          this.vitality,
+          this.progress,
+          focusT
+        );
+      }
 
       ctx.save();
-      ctx.translate(w / 2, h - padBottom);
+      ctx.translate(w / 2, groundY);
       ctx.scale(safeScale, safeScale);
-      renderer().renderTree(ctx, this.model, {
+      api.renderTree(ctx, this.model, {
         progress: this.progress,
         time: this._time,
         animated: this.animated,
         vitality: this.vitality,
         poison: this.poison,
         colors: this.colors,
+        skipSoil: focusT > 0.55,
       });
       ctx.restore();
     }

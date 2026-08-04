@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Marcellus&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@400;500;600;700&family=Marcellus&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -36,6 +36,7 @@
         --white: #fbfaf4;
         --shadow: 0 20px 45px rgba(30, 50, 35, 0.16);
         --serif: "Marcellus", Georgia, serif;
+        --speech: "Lora", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
         --sans: "DM Sans", system-ui, sans-serif;
       }
       [data-theme="dark"] {
@@ -181,75 +182,102 @@
         text-transform: uppercase;
       }
 
-      /* Home */
+      /* Home
+         Fixed zones: speech | tree miniature | balance+actions.
+         Tree height does not follow quote length.
+      */
       .speech {
-        min-height: 96px;
-        padding-top: clamp(14px, 3vh, 28px);
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 0;
+        padding-top: clamp(8px, 1.4vh, 16px);
+        padding-bottom: 6px;
+        overflow: hidden;
         cursor: pointer;
       }
       .speech .arabic {
         display: block;
+        flex: 0 0 auto;
         margin-bottom: 8px;
         color: var(--green);
         font-family: var(--serif);
         font-size: 12px;
       }
       .speech h1 {
-        max-width: 390px;
+        flex: 0 1 auto;
+        max-width: 100%;
         margin: 0;
-        font-family: var(--serif);
-        font-size: clamp(30px, 8vw, 39px);
-        font-weight: 400;
-        line-height: 1.04;
-        letter-spacing: -0.035em;
+        padding-top: 0.12em;
+        font-family: var(--speech);
+        font-size: clamp(20px, 3.6vh, 28px);
+        font-weight: 500;
+        line-height: 1.32;
+        letter-spacing: -0.015em;
         text-wrap: balance;
-        animation: speech-in 0.45s ease both;
+        overflow-wrap: break-word;
+        hyphens: manual;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        animation: speech-in 0.4s ease both;
       }
       .speech p {
-        margin: 9px 0 0;
+        flex: 0 0 auto;
+        margin: 8px 0 0;
         color: var(--muted);
-        font-size: 13px;
-        line-height: 1.48;
-        animation: speech-in 0.45s 0.05s ease both;
-      }
-      .speech .shuffle-hint {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        margin-top: 10px;
-        color: var(--faint);
-        font-size: 8px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
+        font-family: var(--sans);
+        font-size: clamp(12px, 1.55vh, 13px);
+        font-weight: 400;
+        line-height: 1.45;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        animation: speech-in 0.4s 0.04s ease both;
       }
       @keyframes speech-in {
         from {
           opacity: 0;
-          transform: translateY(5px);
         }
         to {
           opacity: 1;
-          transform: none;
         }
       }
-      /* Spiritual tree — distant on home, focus expands (open/close are reverse) */
       #homePage {
-        --upper-h: auto;
-        --lower-h: auto;
-        --tree-min: 96px;
+        --tree-h: clamp(118px, 17vh, 152px);
         display: grid;
-        grid-template-rows: var(--upper-h) minmax(var(--tree-min), 1fr) var(--lower-h);
-        transition: grid-template-rows 0.85s cubic-bezier(0.32, 0.72, 0.24, 1);
+        grid-template-rows: minmax(0, 1fr) var(--tree-h) auto;
+        min-height: 0;
+        height: 100%;
+        overflow: hidden;
       }
-      .home-upper,
-      .home-lower {
+      #homePage.rows-animating {
+        transition: grid-template-rows 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      #homePage.tree-focus:not(.rows-animating) {
+        grid-template-rows: 0fr minmax(0, 1fr) 0fr;
+      }
+      .home-upper {
+        display: flex;
+        flex-direction: column;
         min-height: 0;
         overflow: hidden;
-        transition:
-          transform 0.9s cubic-bezier(0.4, 0, 0.2, 1),
-          opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1),
-          filter 0.9s cubic-bezier(0.4, 0, 0.2, 1);
-        will-change: transform, opacity;
+        transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: opacity;
+      }
+      .home-upper > .topbar,
+      .home-upper > .install-banner {
+        flex: 0 0 auto;
+      }
+      .home-lower {
+        min-height: min-content;
+        overflow: hidden;
+        transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: opacity;
       }
       .tree-stage {
         --tree-vitality: 0.5;
@@ -263,6 +291,7 @@
         --sky-b: #d5e0d2;
         position: relative;
         min-height: 0;
+        height: 100%;
         margin: 4px 0 8px;
         padding: 0;
         border: 0;
@@ -273,9 +302,9 @@
         overflow: hidden;
         box-shadow: inset 0 0 0 1px rgba(32, 37, 31, 0.06);
         transition:
-          margin 0.9s cubic-bezier(0.4, 0, 0.2, 1),
-          border-radius 0.9s cubic-bezier(0.4, 0, 0.2, 1),
-          box-shadow 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+          margin 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+          border-radius 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 1.1s cubic-bezier(0.22, 1, 0.36, 1);
         -webkit-tap-highlight-color: transparent;
       }
       .tree-stage:focus-visible {
@@ -336,48 +365,35 @@
         position: absolute;
         left: 14px;
         right: 14px;
-        bottom: 8px;
+        top: 10px;
+        bottom: auto;
         z-index: 2;
         color: var(--muted);
         font-size: 9px;
         letter-spacing: 0.08em;
         text-align: center;
         text-transform: uppercase;
-        opacity: 0.78;
+        opacity: 0.85;
+        pointer-events: none;
         transition:
-          opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+          opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
           color 0.35s ease,
-          bottom 0.9s cubic-bezier(0.4, 0, 0.2, 1),
-          font-size 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+          top 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+          bottom 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+          font-size 1.1s cubic-bezier(0.22, 1, 0.36, 1);
       }
       .tree-stage[data-health="rotten"] .tree-caption {
-        color: rgba(230, 220, 200, 0.55);
-      }
-      .tree-hint {
-        position: absolute;
-        top: 8px;
-        right: 12px;
-        z-index: 2;
-        color: var(--faint);
-        font-size: 8px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        opacity: 0.55;
-        transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+        color: rgba(230, 220, 200, 0.7);
       }
       #homePage.tree-focus {
         overflow: hidden;
       }
       #homePage.tree-focus .home-upper {
-        transform: translateY(-18%);
         opacity: 0;
-        filter: blur(2px);
         pointer-events: none;
       }
       #homePage.tree-focus .home-lower {
-        transform: translateY(18%);
         opacity: 0;
-        filter: blur(2px);
         pointer-events: none;
       }
       #homePage.tree-focus .tree-stage {
@@ -388,12 +404,15 @@
           0 18px 40px rgba(20, 35, 25, 0.12);
       }
       #homePage.tree-focus .tree-caption {
-        bottom: 22px;
+        top: auto;
+        bottom: 20px;
         font-size: 11px;
-        opacity: 0.92;
+        opacity: 0.95;
+        color: rgba(255, 248, 235, 0.94);
+        text-shadow: 0 1px 3px rgba(20, 14, 8, 0.45);
       }
-      #homePage.tree-focus .tree-hint {
-        opacity: 0.8;
+      #homePage.tree-focus .tree-stage[data-health="rotten"] .tree-caption {
+        color: rgba(255, 236, 210, 0.88);
       }
       .balance-card {
         position: relative;
@@ -1048,12 +1067,19 @@
         color: var(--muted);
         font-size: 10px;
         line-height: 1.4;
+        min-width: 0;
       }
       .install-banner strong {
         display: block;
         margin-bottom: 2px;
         color: var(--ink);
         font-size: 12px;
+      }
+      .install-banner .banner-actions {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 6px;
       }
       .install-banner button {
         flex: 0 0 auto;
@@ -1064,6 +1090,11 @@
         color: #fff;
         cursor: pointer;
         font-size: 10px;
+      }
+      .install-banner button.ghost {
+        background: transparent;
+        color: var(--muted);
+        padding: 9px 10px;
       }
       .install-steps {
         display: grid;
@@ -1107,14 +1138,20 @@
       }
       @media (max-height: 740px) {
         .speech {
-          min-height: 78px;
-          padding-top: 12px;
+          padding-top: 6px;
+          padding-bottom: 4px;
         }
         .speech h1 {
-          font-size: 26px;
+          font-size: clamp(18px, 3.2vh, 24px);
+          line-height: 1.3;
+          -webkit-line-clamp: 3;
+        }
+        .speech p {
+          font-size: 12px;
+          -webkit-line-clamp: 2;
         }
         #homePage {
-          --tree-min: 80px;
+          --tree-h: clamp(100px, 15vh, 128px);
         }
         .balance-card {
           padding-block: 17px 15px;
@@ -1133,23 +1170,51 @@
 
       .tree-debug {
         position: fixed;
-        left: 12px;
+        top: 50%;
         right: 12px;
-        bottom: 12px;
+        left: auto;
+        bottom: auto;
+        transform: translateY(-50%);
         z-index: 40;
         display: none;
-        gap: 8px;
-        padding: 12px 14px;
+        width: min(200px, calc(100vw - 24px));
+        gap: 10px;
+        padding: 14px 14px 12px;
         border-radius: 16px;
         background: rgba(20, 24, 20, 0.92);
         color: #f2f0e6;
         font-size: 12px;
-        box-shadow: 0 12px 30px rgba(0,0,0,.28);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(8px);
       }
-      .tree-debug.show { display: grid; }
-      .tree-debug label { display: grid; gap: 6px; }
-      .tree-debug input[type="range"] { width: 100%; }
-      .tree-debug .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .tree-debug.show {
+        display: grid;
+      }
+      .tree-debug label {
+        display: grid;
+        gap: 6px;
+      }
+      .tree-debug label span {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .tree-debug input[type="range"] {
+        width: 100%;
+        accent-color: #3f8a66;
+      }
+      .tree-debug .row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tree-debug .row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
       .tree-debug button {
         border: 0;
         border-radius: 999px;
@@ -1157,8 +1222,24 @@
         background: #3f8a66;
         color: #fff;
         cursor: pointer;
+        font: inherit;
       }
-      .tree-debug button.ghost { background: rgba(255,255,255,.12); }
+      .tree-debug button.ghost {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .tree-debug .seed {
+        opacity: 0.75;
+        font-variant-numeric: tabular-nums;
+      }
+      @media (max-width: 520px) {
+        .tree-debug {
+          right: auto;
+          left: 12px;
+          width: min(168px, calc(100vw - 24px));
+          font-size: 11px;
+          padding: 12px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1187,10 +1268,27 @@
               <strong data-i18n="installBannerTitle">Add to Home Screen</strong>
               <span data-i18n="installBannerBody">Open Nafs like an app</span>
             </p>
-            <button type="button" id="installBannerBtn" data-i18n="install">Install</button>
+            <div class="banner-actions">
+              <button
+                type="button"
+                class="ghost"
+                id="installBannerDismiss"
+                data-i18n="installBannerDismiss"
+              >
+                Later
+              </button>
+              <button type="button" id="installBannerBtn" data-i18n="install">Install</button>
+            </div>
           </div>
 
-          <div class="speech" id="speech" title="Shuffle thought">
+          <div
+            class="speech"
+            id="speech"
+            data-i18n-aria="anotherThought"
+            aria-label="Another thought"
+            role="button"
+            tabindex="0"
+          >
             <span class="arabic" data-i18n="sabr">صَبْر</span>
             <h1 id="speechTitle"></h1>
             <p id="speechBody"></p>
@@ -1207,7 +1305,6 @@
           aria-label="Open spiritual tree"
           aria-expanded="false"
         >
-          <span class="tree-hint" data-i18n="treeHint">tap</span>
           <canvas class="tree-canvas" id="treeCanvas" aria-hidden="true"></canvas>
           <span class="tree-caption" id="treeCaption">Soil awaits</span>
         </button>
@@ -1429,10 +1526,20 @@
           <span>Progress <b id="treeDebugProgressLabel">0%</b></span>
           <input id="treeDebugProgress" type="range" min="0" max="100" value="0" />
         </label>
+        <label>
+          <span>Vitality <b id="treeDebugVitalityLabel">70%</b></span>
+          <input id="treeDebugVitality" type="range" min="0" max="100" value="70" />
+        </label>
+        <label>
+          <span>Poison <b id="treeDebugPoisonLabel">30%</b></span>
+          <input id="treeDebugPoison" type="range" min="0" max="100" value="30" />
+        </label>
         <div class="row">
-          <button type="button" id="treeDebugGrow">Grow</button>
-          <button type="button" class="ghost" id="treeDebugRegen">Regenerate</button>
-          <span>Seed: <b id="treeDebugSeed">12345</b></span>
+          <div class="row-actions">
+            <button type="button" id="treeDebugGrow">Grow</button>
+            <button type="button" class="ghost" id="treeDebugRegen">Regen</button>
+          </div>
+          <span class="seed">Seed: <b id="treeDebugSeed">12345</b></span>
         </div>
       </aside>
 
