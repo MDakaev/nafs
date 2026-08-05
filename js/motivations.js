@@ -57,6 +57,14 @@ window.NAFS_MOTIVATIONS = {
     ["Смотри без осуждения.", "Ясность помогает меняться лучше, чем стыд."],
     ["Твоё внимание — аманат.", "Отдавай его тому, что действительно имеет значение."],
     ["Пусть сердце ведёт.", "Не позволяй самому громкому желанию стать главным."],
+    ["СубханаЛлах.", "Очисти сердце от шума желания."],
+    ["АльхамдулиЛлах.", "Благодарность ослабляет хватку нафса."],
+    ["Аллахуакбар.", "То, что тянет тебя, меньше Него."],
+    ["ЛяИляхаИлляЛлах.", "Верни сердце к Единому."],
+    ["АстагфируЛлах.", "Срыв не конец. Вернись."],
+    ["Ля Хавля Ва Ля Куввата Илля Би Ллах.", "Сила — не в борьбе в одиночку."],
+    ["СубханаЛлахи Ва Бихамдихи.", "Лёгкий зикр — крепкий щит."],
+    ["АстагфируЛлах аль Азым.", "Попроси прощение сейчас — и продолжай путь."],
   ],
   en: [
     ["A small victory over yourself.", "Big change begins with one honest choice."],
@@ -115,5 +123,31 @@ window.NAFS_MOTIVATIONS = {
     ["Look without judgment.", "Clarity helps change more than shame does."],
     ["Your attention is a trust.", "Give it to what truly matters."],
     ["Let the heart lead.", "Do not let the loudest desire become the main one."],
+    ["SubhanaLlah.", "Clear the heart of desire’s noise."],
+    ["AlhamduliLlah.", "Gratitude loosens the grip of nafs."],
+    ["Allahuakbar.", "What pulls you is smaller than Him."],
+    ["LaIlahaIllaLlah.", "Return the heart to the One."],
+    ["AstaghfiruLlah.", "A slip is not the end. Return."],
+    ["La Hawla Wa La Quwwata Illa Bi Llah.", "Strength is not in fighting alone."],
+    ["SubhanAllahi Wa Bihamdihi.", "A light dhikr is a strong shield."],
+    ["AstaghfiruLlah al Azeem.", "Ask forgiveness now — and keep walking."],
   ],
+};
+
+/** Short dhikr shown right after marking Iman or Nafs. */
+window.NAFS_MARK_DHIKR = {
+  ru: {
+    iman: [
+      ["АльхамдулиЛлах", "Хвала Аллаху."],
+      ["СубханаЛлах", "Слава Аллаху."],
+    ],
+    nafs: ["АстагфируЛлах", "Попроси прощение у Аллаха."],
+  },
+  en: {
+    iman: [
+      ["AlhamduliLlah", "All praise is for Allah."],
+      ["SubhanaLlah", "Glory be to Allah."],
+    ],
+    nafs: ["AstaghfiruLlah", "Ask Allah for forgiveness."],
+  },
 };

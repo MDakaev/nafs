@@ -99,12 +99,43 @@
     return t("marks");
   }
 
-  function showToast(text) {
+  /**
+   * @param {string} title
+   * @param {string} [body]
+   * @param {number} [ms]
+   */
+  function showToast(title, body, ms = 1300) {
     const toast = $("toast");
-    toast.textContent = text;
+    toast.replaceChildren();
+    const titleEl = document.createElement("div");
+    titleEl.className = "toast-title";
+    titleEl.textContent = title;
+    toast.appendChild(titleEl);
+    if (body) {
+      const bodyEl = document.createElement("div");
+      bodyEl.className = "toast-body";
+      bodyEl.textContent = body;
+      toast.appendChild(bodyEl);
+    }
     toast.classList.add("show");
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => toast.classList.remove("show"), 1300);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), ms);
+  }
+
+  function markDhikr() {
+    return window.NAFS_MARK_DHIKR[state.lang] || window.NAFS_MARK_DHIKR.ru;
+  }
+
+  function showMarkDhikr(side) {
+    const pack = markDhikr();
+    if (side === "me") {
+      const options = pack.iman;
+      renderSpeechItem(options[Math.floor(Math.random() * options.length)], true, {
+        dhikr: true,
+      });
+    } else {
+      renderSpeechItem(pack.nafs, true, { dhikr: true });
+    }
   }
 
   /** Apply static translated strings marked with data-i18n. */
@@ -122,9 +153,12 @@
     });
   }
 
-  function renderSpeech(animate = false) {
-    const list = motivations();
-    const [title, body] = list[state.motivation % list.length];
+  function renderSpeechItem(item, animate = false, opts = {}) {
+    const title = item[0] || "";
+    const body = item[1] || "";
+    const speech = $("speech");
+    speech.classList.toggle("is-dhikr", Boolean(opts.dhikr));
+    speech.classList.toggle("is-empty-body", !body);
     if (animate) {
       $("speechTitle").style.animation = "none";
       $("speechBody").style.animation = "none";
@@ -134,7 +168,12 @@
     }
     $("speechTitle").textContent = title;
     $("speechBody").textContent = body;
-    $("drawerQuote").textContent = `${title} ${body}`;
+    $("drawerQuote").textContent = body ? `${title} ${body}` : title;
+  }
+
+  function renderSpeech(animate = false) {
+    const list = motivations();
+    renderSpeechItem(list[state.motivation % list.length], animate, { dhikr: false });
   }
 
   function nextSpeech() {
@@ -211,6 +250,31 @@
     $("homePage").style.gridTemplateRows = "";
   }
 
+  /** Resolve CSS `--tree-h` to pixels (handles clamp() via probe element). */
+  function readCssTreeHeight() {
+    const page = $("homePage");
+    if (!page) return 130;
+    const probe = document.createElement("div");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;height:var(--tree-h)";
+    page.appendChild(probe);
+    const height = Math.round(probe.getBoundingClientRect().height);
+    probe.remove();
+    return height > 0 ? height : 130;
+  }
+
+  function cancelTreeFocusAnimation() {
+    const page = $("homePage");
+    treeFocusAnim += 1;
+    clearTimeout(toggleTreeFocus.timer);
+    if (!page) return;
+    page.classList.remove("rows-animating");
+    clearHomePixelRows();
+    page.classList.toggle("tree-focus", state.treeFocus);
+    compactHomeRows = null;
+  }
+
   function pulseTreeResize(durationMs) {
     const growing = window.NAFS_tree?.getGrowing?.();
     if (!growing) return;
@@ -234,13 +298,16 @@
     if (!page || page.classList.contains("rows-animating")) return;
 
     const opening = !state.treeFocus;
-    const duration = 1100;
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = reduceMotion ? 0 : 1100;
 
     // Freeze current layout to concrete pixels (fr/auto can't interpolate).
     const from = readHomeRowHeights();
-    page.classList.add("rows-animating");
-    setHomePixelRows(from);
-    void page.offsetHeight;
+    if (!reduceMotion) {
+      page.classList.add("rows-animating");
+      setHomePixelRows(from);
+      void page.offsetHeight;
+    }
 
     state.treeFocus = opening;
     save();
@@ -253,6 +320,15 @@
     }
     page.classList.toggle("tree-focus", opening);
 
+    if (reduceMotion) {
+      clearHomePixelRows();
+      compactHomeRows = null;
+      window.NAFS_tree?.getGrowing?.()?.resize?.(true);
+      if (!treeDebugOverride) renderTree();
+      analytics().track(opening ? "tree_open" : "tree_close");
+      return;
+    }
+
     const to = opening
       ? {
           upper: 0,
@@ -261,9 +337,7 @@
         }
       : compactHomeRows || {
           upper: Math.max(120, from.tree * 0.55),
-          tree: Math.round(
-            Math.min(152, Math.max(118, window.innerHeight * 0.17))
-          ),
+          tree: readCssTreeHeight(),
           lower: Math.max(220, from.tree * 0.9),
         };
 
@@ -317,8 +391,9 @@
             ? t("statusRecover")
             : t("statusEven");
     $("balanceFill").style.width = `${total ? (me / total) * 100 : 50}%`;
-    $("balanceCard").style.background =
-      `linear-gradient(145deg,rgb(${start.join(",")}),rgb(${end.join(",")}))`;
+    const card = $("balanceCard");
+    card.style.setProperty("--balance-start", `rgb(${start.join(",")})`);
+    card.style.setProperty("--balance-end", `rgb(${end.join(",")})`);
     renderTree();
   }
 
@@ -333,9 +408,8 @@
     void $("delta").offsetWidth;
     $("delta").classList.add("pop");
     if (state.settings.haptic) navigator.vibrate?.(12);
-    showToast(side === "me" ? t("toastMe") : t("toastNafs"));
+    showMarkDhikr(side);
     analytics().track(side === "me" ? "mark_me" : "mark_nafs", { side });
-    nextSpeech();
   }
 
   function undo() {
@@ -439,21 +513,32 @@
           : delta < 0
             ? t("historyBehind")
             : t("historyEven");
-    $("chart").innerHTML = data.groups
-      .map(
-        (group) => `
+    const chart = $("chart");
+    chart.dataset.period = period;
+    chart.innerHTML = data.groups
+      .map((group) => {
+        const label =
+          period === "year" && group.label.length > 3
+            ? group.label.slice(0, 3)
+            : group.label;
+        return `
         <div class="chart-group">
           <div class="bars">
             <i class="bar me" style="height:${Math.max(2, (group.me / max) * 100)}%"></i>
             <i class="bar nafs" style="height:${Math.max(2, (group.nafs / max) * 100)}%"></i>
           </div>
-          <span class="chart-label">${group.label}</span>
-        </div>`
-      )
+          <span class="chart-label">${label}</span>
+        </div>`;
+      })
       .join("");
   }
 
   function openPage(name) {
+    if (name !== "home" && state.treeFocus) {
+      state.treeFocus = false;
+      cancelTreeFocusAnimation();
+      renderTree();
+    }
     document.querySelectorAll(".page").forEach((p) => {
       p.classList.toggle("active", p.id === `${name}Page`);
     });
@@ -462,24 +547,41 @@
     }
   }
 
+  function syncLayerA11y() {
+    const drawer = $("drawer");
+    const scrim = $("scrim");
+    const drawerOpen = drawer.classList.contains("open");
+    const sheetOpen = [...document.querySelectorAll(".sheet")].some((s) =>
+      s.classList.contains("open")
+    );
+    drawer.inert = !drawerOpen;
+    document.querySelectorAll(".sheet").forEach((sheet) => {
+      sheet.inert = !sheet.classList.contains("open");
+    });
+    if (scrim) scrim.inert = !(drawerOpen || sheetOpen);
+  }
+
   function openMenu() {
     $("drawer").classList.add("open");
     $("scrim").classList.add("open");
+    syncLayerA11y();
   }
 
   function closeLayers() {
     $("drawer").classList.remove("open");
     document.querySelectorAll(".sheet").forEach((s) => s.classList.remove("open"));
     $("scrim").classList.remove("open");
+    syncLayerA11y();
   }
 
   function openSheet(id) {
     $("drawer").classList.remove("open");
     $(id).classList.add("open");
     $("scrim").classList.add("open");
+    syncLayerA11y();
   }
 
-  function applyTheme(choice) {
+  function applyTheme(choice, { track = true } = {}) {
     state.theme = choice;
     const actual =
       choice === "system"
@@ -496,7 +598,7 @@
     document.querySelector('meta[name="theme-color"]').content =
       actual === "dark" ? "#101713" : "#e8e5d9";
     save();
-    analytics().track("theme_change", { theme: choice, actual });
+    if (track) analytics().track("theme_change", { theme: choice, actual });
   }
 
   function setLanguage(lang) {
@@ -673,10 +775,7 @@
   $("openMenu").addEventListener("click", () => {
     if (state.treeFocus) {
       state.treeFocus = false;
-      treeFocusAnim += 1;
-      clearTimeout(toggleTreeFocus.timer);
-      $("homePage")?.classList.remove("rows-animating", "tree-focus");
-      clearHomePixelRows();
+      cancelTreeFocusAnimation();
       renderTree();
     }
     openMenu();
@@ -778,9 +877,25 @@
   window.addEventListener("resize", () => {
     clearTimeout(window.__nafsResizeTimer);
     window.__nafsResizeTimer = setTimeout(() => {
+      const page = $("homePage");
+      if (page?.classList.contains("rows-animating")) {
+        cancelTreeFocusAnimation();
+      }
       window.NAFS_tree?.getGrowing?.()?.resize?.(true);
     }, 150);
   });
+
+  const systemThemeMq = matchMedia("(prefers-color-scheme: dark)");
+  const onSystemThemeChange = () => {
+    if (state.theme === "system") applyTheme("system", { track: false });
+  };
+  if (systemThemeMq.addEventListener) {
+    systemThemeMq.addEventListener("change", onSystemThemeChange);
+  } else if (systemThemeMq.addListener) {
+    systemThemeMq.addListener(onSystemThemeChange);
+  }
+
+  syncLayerA11y();
 
   /** Dev only: ?treeDebug=1 on localhost shows progress/health controls. */
   function setupTreeDebug() {
@@ -905,9 +1020,12 @@
     .catch(() => {})
     .finally(() => {
       refreshAll();
+      syncLayerA11y();
       setupTreeDebug();
       requestAnimationFrame(() => {
         window.NAFS_tree?.getGrowing?.()?.resize?.(true);
       });
+      analytics().params({ lang: state.lang, theme: state.theme });
+      analytics().hit();
     });
 })();
