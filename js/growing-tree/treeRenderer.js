@@ -2101,10 +2101,10 @@
           )
         : 0;
 
-    const colors = {
-      ...DEFAULT_COLORS,
-      ...(options.colors || {}),
-    };
+    const colors =
+      options.colors && Object.keys(options.colors).length
+        ? { ...DEFAULT_COLORS, ...options.colors }
+        : DEFAULT_COLORS;
 
     // ----------------------------------------------------------
     // Background atmospheric glow
