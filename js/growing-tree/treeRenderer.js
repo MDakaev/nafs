@@ -423,6 +423,27 @@
   // WIND
   // ============================================================
 
+  /** X sway shared by stroke geometry, tips, and leaves — one formula. */
+  function windXAtIndex(i, pointCount, wind, branch, time) {
+    if (!wind) return 0;
+    const last = Math.max(1, pointCount - 1);
+    return (
+      Math.sin(
+        time * 0.7 + (branch.swayPhase || 0) + i * 0.4
+      ) *
+      wind *
+      (i / last)
+    );
+  }
+
+  /** Same sway sampled by normalized distance along the branch [0, 1]. */
+  function windXAtAlong(along, wind, branch, time, pointCount) {
+    if (!wind) return 0;
+    const last = Math.max(1, (pointCount || 2) - 1);
+    const t = clamp(along);
+    return windXAtIndex(t * last, last + 1, wind, branch, time);
+  }
+
   function getWindOffset(
     branch,
     progress,
@@ -485,17 +506,8 @@
     const target = metrics.total * p;
     let travelled = 0;
 
-    const windAt = (i) =>
-      Math.sin(
-        time * 0.7 +
-        (branch.swayPhase || 0) +
-        i * 0.4
-      ) *
-      wind *
-      (i / Math.max(1, points.length - 1));
-
     ctx.moveTo(
-      points[0].x + windAt(0),
+      points[0].x + windXAtIndex(0, points.length, wind, branch, time),
       points[0].y
     );
 
@@ -506,7 +518,10 @@
 
       if (travelled + segment <= target) {
         // Only advance to segment end — re-stroking `a` added a wind kink.
-        ctx.lineTo(b.x + windAt(i), b.y);
+        ctx.lineTo(
+          b.x + windXAtIndex(i, points.length, wind, branch, time),
+          b.y
+        );
         travelled += segment;
         continue;
       }
@@ -518,7 +533,8 @@
           : clamp(remaining / segment);
 
       ctx.lineTo(
-        lerp(a.x, b.x, local) + windAt(i),
+        lerp(a.x, b.x, local) +
+          windXAtIndex(i - 1 + local, points.length, wind, branch, time),
         lerp(a.y, b.y, local)
       );
 
@@ -1270,6 +1286,7 @@
 
     // Offset generated geometry so children remain attached
     // to the live fork on the parent (not always the tip).
+    // Bake wind into the polyline so tip / forks / stroke share one shape.
     const dx =
       start.x -
       branch.startX;
@@ -1279,8 +1296,8 @@
       branch.startY;
 
     const shiftedPoints =
-      points.map((p) => ({
-        x: p.x + dx,
+      points.map((p, i) => ({
+        x: p.x + dx + windXAtIndex(i, points.length, wind, branch, time),
         y: p.y + dy,
       }));
 
@@ -1389,12 +1406,13 @@
 
     ctx.beginPath();
 
+    // Wind already baked into shiftedPoints — stroke the shared geometry.
     tracePolyline(
       ctx,
       shiftedPoints,
       shiftedMetrics,
       local,
-      wind,
+      0,
       branch,
       time
     );
@@ -1429,9 +1447,9 @@
         shiftedPoints,
         shiftedMetrics,
         local,
-        wind * 0.7,
+        0,
         branch,
-        time + 0.15
+        time
       );
 
       ctx.stroke();
@@ -1597,11 +1615,19 @@
       return;
     }
 
-    // Follow the same parent-attachment shift as the drawn branch.
+    // Follow the same parent-attachment shift + branch sway as the stroke.
     const dx = branchState.dx || 0;
     const dy = branchState.dy || 0;
+    const along = Number(leaf.along ?? cluster.along ?? 0.9);
+    const swayX = windXAtAlong(
+      along,
+      branchState.sway || 0,
+      branch,
+      time,
+      branch.points?.length
+    );
 
-    const leafX = cluster.x + leaf.x + dx;
+    const leafX = cluster.x + leaf.x + dx + swayX;
     const leafY = cluster.y + leaf.y + dy;
 
     const leafWind =
@@ -1730,9 +1756,16 @@
     const shadowAlpha =
       easeOutCubic(reveal) * 0.07 * vitality;
 
-    // Cluster shadow follows the shifted branch, same as leaves.
+    // Cluster shadow follows the shifted + swayed branch, same as leaves.
     const dx = branchState.dx || 0;
     const dy = branchState.dy || 0;
+    const swayX = windXAtAlong(
+      Number(cluster.along) || 0.9,
+      branchState.sway || 0,
+      branch,
+      time,
+      branch.points?.length
+    );
 
     if (shadowAlpha > 0.001) {
       ctx.save();
@@ -1740,7 +1773,7 @@
       ctx.fillStyle = colors.deepShadow;
       ctx.beginPath();
       ctx.ellipse(
-        cluster.x + dx + 2,
+        cluster.x + dx + swayX + 2,
         cluster.y + dy + 3,
         (cluster.radius || 8) * 0.9,
         (cluster.radius || 8) * 0.55,
