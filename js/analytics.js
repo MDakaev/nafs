@@ -68,6 +68,8 @@
     a.parentNode.insertBefore(k, a);
   })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=" + id, "ym");
 
+  window.dataLayer = window.dataLayer || [];
+
   // Matches official Metrika snippet options from the counter dashboard.
   window.ym(Number(id), "init", {
     ssr: true,

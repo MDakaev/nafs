@@ -29,6 +29,7 @@
 
   /** Baseline for a brand-new user — soil + faint life, not a blank canvas. */
   const DORMANT_PROGRESS = 0.01;
+  const DEFAULT_SEED_TEXT = "nafs-seed";
 
   function parseDay(key) {
     const [y, m, d] = String(key).split("-").map(Number);
@@ -141,7 +142,7 @@
 
     const health =
       total > 0 ? healthFromVitality(vitality, total) : "dormant";
-    const seed = hashSeed(firstKey || "nafs-seed");
+    const seed = hashSeed(firstKey || DEFAULT_SEED_TEXT);
 
     return {
       me,
@@ -161,6 +162,14 @@
   }
 
   let growing = null;
+  let lastPaintKey = "";
+
+  function prefersReducedMotion() {
+    return (
+      typeof matchMedia === "function" &&
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  }
 
   function mount(canvas) {
     if (!canvas || typeof window.GrowingTree !== "function") return false;
@@ -168,12 +177,13 @@
       growing.destroy();
       growing = null;
     }
-    // Match empty-state compute so the first rAF frame isn't a health flash.
+    lastPaintKey = "";
+    // Match empty-state compute so the first paint does not regenerate.
     growing = new window.GrowingTree({
       canvas,
       progress: DORMANT_PROGRESS,
-      seed: 12345,
-      animated: true,
+      seed: hashSeed(DEFAULT_SEED_TEXT),
+      animated: !prefersReducedMotion(),
       vitality: 0.5,
       poison: 0,
     });
@@ -182,16 +192,22 @@
 
   function paint(tree) {
     if (!growing) return;
-    growing.setProgress(
-      Number.isFinite(tree.progress) ? tree.progress : DORMANT_PROGRESS
-    );
-    growing.setHealth(
-      Number.isFinite(tree.vitality) ? tree.vitality : 0.5,
-      Number.isFinite(tree.poison) ? tree.poison : 0
-    );
-    if (tree.seed && tree.seed !== growing.seed) {
-      growing.regenerate(tree.seed);
+    const progress = Number.isFinite(tree.progress) ? tree.progress : DORMANT_PROGRESS;
+    const vitality = Number.isFinite(tree.vitality) ? tree.vitality : 0.5;
+    const poison = Number.isFinite(tree.poison) ? tree.poison : 0;
+    const seed = tree.seed || growing.seed;
+    const key = `${seed}|${progress}|${vitality}|${poison}`;
+    if (key === lastPaintKey && seed === growing.seed) return;
+    lastPaintKey = key;
+
+    if (typeof growing.setState === "function") {
+      growing.setState({ progress, vitality, poison, seed });
+      return;
     }
+    growing.setProgress(progress, { redraw: false });
+    growing.setHealth(vitality, poison, { redraw: false });
+    if (seed && seed !== growing.seed) growing.regenerate(seed);
+    else growing.draw();
   }
 
   function getGrowing() {
@@ -201,12 +217,14 @@
   function destroy() {
     if (growing) growing.destroy();
     growing = null;
+    lastPaintKey = "";
   }
 
   window.NAFS_tree = {
     STAGE_RULES,
     compute,
     healthFromVitality,
+    hashSeed,
     mount,
     paint,
     getGrowing,

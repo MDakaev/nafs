@@ -3,9 +3,8 @@
  * HTML/JS: network-first (so label/copy updates show on refresh).
  * Icons/manifest: cache-first with background refresh.
  */
-const CACHE = "nafs-v14";
+const CACHE = "nafs-v15";
 const PRECACHE = [
-  "./",
   "./index.html",
   "./manifest.webmanifest",
   "./js/config.js",

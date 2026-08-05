@@ -51,8 +51,6 @@
   state.lang = state.lang === "en" ? "en" : "ru";
   // Never restore tree-focus across reloads — it can leave the home grid collapsed.
   state.treeFocus = false;
-  // Debug panel takes over progress only for the current page view.
-  delete state.treeDebugOverride;
   let treeDebugOverride = false;
   if (!Number.isInteger(state.motivation)) {
     state.motivation = Math.floor(Math.random() * motivations().length);
@@ -196,7 +194,7 @@
     dormant: "treeHealthDormant",
   };
 
-  function renderTree() {
+  function renderTree({ resize = false } = {}) {
     const tree = window.NAFS_tree?.compute(state.days) || {
       stage: 0,
       stageKey: "treeStageSoil",
@@ -224,9 +222,10 @@
     if (home && !home.classList.contains("rows-animating")) {
       home.classList.toggle("tree-focus", state.treeFocus);
     }
-    // Canvas must re-measure whenever the strip changes size.
-    const growing = window.NAFS_tree?.getGrowing?.();
-    requestAnimationFrame(() => growing?.resize?.());
+    if (resize) {
+      const growing = window.NAFS_tree?.getGrowing?.();
+      requestAnimationFrame(() => growing?.resize?.());
+    }
   }
 
   /** Snapshot of compact home rows — used to reverse the focus animation. */
@@ -276,26 +275,26 @@
   }
 
   function pulseTreeResize(durationMs) {
+    // GrowingTree._tick already resizes when the parent size changes each frame.
+    // One forced resize at the end is enough to settle after the CSS transition.
     const growing = window.NAFS_tree?.getGrowing?.();
     if (!growing) return;
-    const started = performance.now();
     const id = ++treeFocusAnim;
-    const step = (now) => {
+    clearTimeout(pulseTreeResize.timer);
+    pulseTreeResize.timer = setTimeout(() => {
       if (id !== treeFocusAnim) return;
       growing.resize(true);
-      if (now - started < durationMs) {
-        requestAnimationFrame(step);
-      } else {
-        growing.resize(true);
-      }
-    };
-    requestAnimationFrame(step);
+    }, durationMs);
   }
 
   /** Smooth mini → full tree: animate pixel grid rows + continuous canvas fit. */
-  function toggleTreeFocus() {
+  function toggleTreeFocus({ force = false } = {}) {
     const page = $("homePage");
-    if (!page || page.classList.contains("rows-animating")) return;
+    if (!page) return;
+    if (page.classList.contains("rows-animating")) {
+      if (!force) return;
+      cancelTreeFocusAnimation();
+    }
 
     const opening = !state.treeFocus;
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -419,6 +418,7 @@
     state.last = null;
     save();
     renderHome();
+    renderSpeech();
     showToast(t("toastUndo"));
   }
 
@@ -456,15 +456,19 @@
       for (let start = 27; start >= 0; start -= 7) {
         let me = 0;
         let nafs = 0;
+        let firstDay = null;
+        let lastDay = null;
         for (let j = 0; j < 7; j += 1) {
           const d = new Date(now);
           d.setDate(now.getDate() - (start - j));
+          if (!firstDay) firstDay = d;
+          lastDay = d;
           const v = valuesForDate(d);
           me += v.me;
           nafs += v.nafs;
         }
         groups.push({
-          label: `${Math.max(1, now.getDate() - start)}–${Math.max(1, now.getDate() - start + 6)}`,
+          label: `${firstDay.getDate()}–${lastDay.getDate()}`,
           me,
           nafs,
         });
@@ -543,7 +547,11 @@
       p.classList.toggle("active", p.id === `${name}Page`);
     });
     if (name === "history") {
-      renderHistory(document.querySelector(".period.active").dataset.period);
+      const activePeriod = document.querySelector(".period.active");
+      renderHistory(activePeriod?.dataset.period || "day");
+    }
+    if (name === "home") {
+      window.NAFS_tree?.getGrowing?.()?.resume?.();
     }
   }
 
@@ -582,6 +590,7 @@
   }
 
   function applyTheme(choice, { track = true } = {}) {
+    const prev = state.theme;
     state.theme = choice;
     const actual =
       choice === "system"
@@ -597,8 +606,8 @@
       choice === "dark" ? t("themeDark") : choice === "system" ? t("themeSystem") : t("themeLight");
     document.querySelector('meta[name="theme-color"]').content =
       actual === "dark" ? "#101713" : "#e8e5d9";
-    save();
-    if (track) analytics().track("theme_change", { theme: choice, actual });
+    if (prev !== choice) save();
+    if (track && prev !== choice) analytics().track("theme_change", { theme: choice, actual });
   }
 
   function setLanguage(lang) {
@@ -629,7 +638,9 @@
         const oldest = new Date(now);
         oldest.setHours(0, 0, 0, 0);
         oldest.setDate(now.getDate() - 6);
-        remove = date >= oldest && date <= now;
+        const end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        remove = date >= oldest && date <= end;
       } else if (period === "month") {
         remove = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
       }
@@ -718,10 +729,12 @@
 
   function refreshAll() {
     applyStaticI18n();
-    applyTheme(state.theme);
+    applyTheme(state.theme, { track: false });
     renderSpeech();
     renderHome();
-    renderHistory(document.querySelector(".period.active")?.dataset.period || "day");
+    if (document.querySelector("#historyPage")?.classList.contains("active")) {
+      renderHistory(document.querySelector(".period.active")?.dataset.period || "day");
+    }
     updateInstallVisibility();
     document.querySelectorAll("[data-reset-period]").forEach((b) => {
       b.classList.toggle("selected", b.dataset.resetPeriod === (state.resetPeriod || "day"));
@@ -793,7 +806,7 @@
   $("treeStage").addEventListener("click", toggleTreeFocus);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.treeFocus) {
-      toggleTreeFocus();
+      toggleTreeFocus({ force: true });
     }
   });
   $("undo").addEventListener("click", undo);
@@ -951,14 +964,6 @@
                   window.NAFS_tree?.STAGE_RULES || []
                 ).find((rule) => String(rule.id) === stageEl.dataset.stage)?.key
               : null;
-          const healthCaption = {
-            living: "treeHealthLiving",
-            mostly: "treeHealthMostly",
-            mixed: "treeHealthMixed",
-            withered: "treeHealthWithered",
-            rotten: "treeHealthRotten",
-            dormant: "treeHealthDormant",
-          };
           if (stageKey) {
             caption.textContent = `${t(stageKey)} · ${t(
               healthCaption[health] || "treeHealthDormant"

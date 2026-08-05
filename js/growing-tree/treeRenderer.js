@@ -2108,94 +2108,59 @@
     // ----------------------------------------------------------
 
     const roots =
-      Array.isArray(
-        model.roots
-      )
-        ? model.roots
-        : [];
+      Array.isArray(model.roots) ? model.roots : [];
+    const orderedRoots = Array.isArray(model.orderedRoots)
+      ? model.orderedRoots
+      : roots
+          .slice()
+          .sort((a, b) => (a.depth || 0) - (b.depth || 0));
 
-    const orderedRoots =
-      roots
-        .slice()
-        .sort(
-          (a, b) =>
-            (a.depth || 0) -
-            (b.depth || 0)
-        );
-
-    orderedRoots.forEach(
-      (root) => {
-        drawRoot(
-          ctx,
-          root,
-          progress,
-          time,
-          colors,
-          windStrength
-        );
-      }
-    );
+    orderedRoots.forEach((root) => {
+      drawRoot(ctx, root, progress, time, colors, windStrength);
+    });
 
     // ----------------------------------------------------------
     // Branches
     // ----------------------------------------------------------
 
     const branches =
-      Array.isArray(
-        model.branches
-      )
-        ? model.branches
-        : [];
+      Array.isArray(model.branches) ? model.branches : [];
+    const orderedBranches = Array.isArray(model.orderedBranches)
+      ? model.orderedBranches
+      : branches
+          .slice()
+          .sort(
+            (a, b) =>
+              (a.depth || 0) - (b.depth || 0) || a.id - b.id
+          );
 
-    const orderedBranches =
-      branches
-        .slice()
-        .sort(
-          (a, b) =>
-            (a.depth || 0) -
-              (b.depth || 0) ||
-            a.id - b.id
-        );
+    const tips = new Map();
 
-    const tips =
-      new Map();
-
-    orderedBranches.forEach(
-      (branch) => {
-        drawBranch(
-          ctx,
-          branch,
-          progress,
-          time,
-          colors,
-          windStrength,
-          tips,
-          vitality,
-          poison
-        );
-      }
-    );
+    orderedBranches.forEach((branch) => {
+      drawBranch(
+        ctx,
+        branch,
+        progress,
+        time,
+        colors,
+        windStrength,
+        tips,
+        vitality,
+        poison
+      );
+    });
 
     // ----------------------------------------------------------
     // Leaf clusters
     // ----------------------------------------------------------
 
     const clusters =
-      Array.isArray(
-        model.leafClusters
-      )
-        ? model.leafClusters
-        : [];
+      Array.isArray(model.leafClusters) ? model.leafClusters : [];
 
     const branchesById =
-      new Map(
-        branches.map(
-          (branch) => [
-            branch.id,
-            branch,
-          ]
-        )
-      );
+      model.branchesById instanceof Map
+        ? model.branchesById
+        : new Map(branches.map((branch) => [branch.id, branch]));
 
     clusters.forEach(
       (cluster) => {

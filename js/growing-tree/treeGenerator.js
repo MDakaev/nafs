@@ -48,12 +48,6 @@
     return 1 - Math.pow(1 - t, 3);
   }
 
-  function normalizeAngle(angle) {
-    while (angle > Math.PI) angle -= PI2;
-    while (angle < -Math.PI) angle += PI2;
-    return angle;
-  }
-
   function distance(a, b) {
     return Math.hypot(b.x - a.x, b.y - a.y);
   }
@@ -964,38 +958,25 @@
     // Metadata
     // ----------------------------------------------------------
 
+    const orderedRoots = roots
+      .slice()
+      .sort((a, b) => (a.depth || 0) - (b.depth || 0));
+    const orderedBranches = branches
+      .slice()
+      .sort((a, b) => (a.depth || 0) - (b.depth || 0) || a.id - b.id);
+    const branchesById = new Map(branches.map((branch) => [branch.id, branch]));
+
     return {
       seed: Number(seed) || 1,
-
       branches,
-
       roots,
-
       leafClusters,
-
       particles,
-
       bounds,
-
-      stages: STAGES,
-
-      getGrowthStage,
-
-      stats: {
-        branches: branches.length,
-        roots: roots.length,
-        leafClusters: leafClusters.length,
-      },
-
-      // Renderer helper.
-      helpers: {
-        clamp,
-        lerp,
-        easeInOutCubic,
-        easeOutCubic,
-        pointOnCurve,
-        normalizeAngle,
-      },
+      // Precomputed for the renderer hot path (avoid per-frame sort/Map).
+      orderedRoots,
+      orderedBranches,
+      branchesById,
     };
   }
 

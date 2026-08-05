@@ -36,6 +36,11 @@
     return t * t * (3 - 2 * t);
   }
 
+  function homePageActive(canvas) {
+    const page = canvas?.closest?.("#homePage");
+    return !page || page.classList.contains("active");
+  }
+
   class GrowingTree {
     constructor(options = {}) {
       this.canvas = options.canvas;
@@ -48,6 +53,7 @@
       this.vitality = renderer().clamp(options.vitality ?? 0.7, 0, 1);
       this.poison = renderer().clamp(options.poison ?? 0.3, 0, 1);
       this.colors = options.colors || {};
+      this._palette = { ...renderer().DEFAULT_COLORS, ...this.colors };
       this.model = generateTree(this.seed);
 
       this._raf = 0;
@@ -56,8 +62,11 @@
       this._disposed = false;
       this._width = 0;
       this._height = 0;
+      this._paused = false;
+      this._needsDraw = true;
 
       this._onResize = () => this.resize();
+      this._onVisibility = () => this._syncLoop();
       this._ro =
         typeof ResizeObserver !== "undefined"
           ? new ResizeObserver(() => this.resize())
@@ -65,18 +74,23 @@
 
       if (this._ro) this._ro.observe(this.canvas.parentElement || this.canvas);
       else window.addEventListener("resize", this._onResize);
+      document.addEventListener("visibilitychange", this._onVisibility);
 
       this.resize();
       this._tick = this._tick.bind(this);
-      this._raf = requestAnimationFrame(this._tick);
+      this._syncLoop();
     }
 
-    setProgress(value) {
+    setProgress(value, opts = {}) {
       this.progress = renderer().clamp(value, 0, 1);
+      if (opts.redraw === false) {
+        this._needsDraw = true;
+        return;
+      }
       this.draw();
     }
 
-    setHealth(vitality, poison) {
+    setHealth(vitality, poison, opts = {}) {
       this.vitality = renderer().clamp(
         vitality == null ? this.vitality : vitality,
         0,
@@ -87,6 +101,22 @@
         0,
         1
       );
+      if (opts.redraw === false) {
+        this._needsDraw = true;
+        return;
+      }
+      this.draw();
+    }
+
+    /** Apply progress/health/seed in one paint (and one optional regen). */
+    setState({ progress, vitality, poison, seed } = {}) {
+      if (progress != null) this.progress = renderer().clamp(progress, 0, 1);
+      if (vitality != null) this.vitality = renderer().clamp(vitality, 0, 1);
+      if (poison != null) this.poison = renderer().clamp(poison, 0, 1);
+      if (seed != null && Number(seed) !== this.seed) {
+        this.regenerate(seed);
+        return;
+      }
       this.draw();
     }
 
@@ -121,6 +151,7 @@
 
     draw() {
       if (this._disposed || !this._width) return;
+      this._needsDraw = false;
       const ctx = this.ctx;
       const w = this._width;
       const h = this._height;
@@ -155,6 +186,7 @@
       const groundY = h - padBottom;
 
       const api = renderer();
+      this._palette = { ...api.DEFAULT_COLORS, ...(this.colors || {}) };
 
       // Sky sun — dims + gathers clouds as Nafs/poison rises.
       api.drawSun(
@@ -174,7 +206,7 @@
           w,
           h,
           groundY,
-          { ...api.DEFAULT_COLORS, ...(this.colors || {}) },
+          this._palette,
           this.vitality,
           this.progress,
           focusT
@@ -196,20 +228,74 @@
       ctx.restore();
     }
 
+    _shouldRun() {
+      if (this._disposed) return false;
+      if (typeof document !== "undefined" && document.hidden) return false;
+      return homePageActive(this.canvas);
+    }
+
+    _syncLoop() {
+      if (this._disposed) return;
+      if (this._shouldRun()) {
+        this._paused = false;
+        if (this.animated) {
+          if (!this._raf) {
+            this._lastTs = 0;
+            this._raf = requestAnimationFrame(this._tick);
+          }
+        } else if (this._raf) {
+          cancelAnimationFrame(this._raf);
+          this._raf = 0;
+          this.draw();
+        } else {
+          this.draw();
+        }
+        return;
+      }
+      this._paused = true;
+      if (this._raf) {
+        cancelAnimationFrame(this._raf);
+        this._raf = 0;
+      }
+      this._lastTs = 0;
+      if (this._needsDraw || this._width) this.draw();
+    }
+
+    /** Resume when home becomes visible again (page switch). */
+    resume() {
+      this._syncLoop();
+      if (this._shouldRun()) this.resize();
+    }
+
     _tick(ts) {
       if (this._disposed) return;
+      if (!this._shouldRun()) {
+        this._raf = 0;
+        this._paused = true;
+        this._lastTs = 0;
+        return;
+      }
+
       if (!this._lastTs) this._lastTs = ts;
       const dt = Math.min(0.05, (ts - this._lastTs) / 1000);
       this._lastTs = ts;
-      this._time += dt;
+      if (this.animated) this._time += dt;
+
       // Layout changes during the focus animation; keep the canvas in sync.
       const parent = this.canvas.parentElement || this.canvas;
-      if (parent.clientWidth !== this._width || parent.clientHeight !== this._height) {
+      const sizeChanged =
+        parent.clientWidth !== this._width || parent.clientHeight !== this._height;
+      if (sizeChanged) {
         this.resize();
-      } else {
+      } else if (this.animated || this._needsDraw) {
         this.draw();
       }
-      this._raf = requestAnimationFrame(this._tick);
+
+      if (this.animated) {
+        this._raf = requestAnimationFrame(this._tick);
+      } else {
+        this._raf = 0;
+      }
     }
 
     destroy() {
@@ -218,6 +304,7 @@
       this._raf = 0;
       if (this._ro) this._ro.disconnect();
       else window.removeEventListener("resize", this._onResize);
+      document.removeEventListener("visibilitychange", this._onVisibility);
     }
   }
 

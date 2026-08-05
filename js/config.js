@@ -13,10 +13,5 @@ window.NAFS_CONFIG = {
   donations: {
     /** CloudTips tip page — primary donation method for launch. */
     tips: "https://pay.cloudtips.ru/p/ce29a1d6",
-
-    // Reserved for later:
-    sbp: "",
-    boosty: "",
-    kofi: "",
   },
 };
