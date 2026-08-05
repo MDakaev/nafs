@@ -162,6 +162,20 @@
     return `rgb(${Math.round(A[0] + (B[0] - A[0]) * amount)},${Math.round(A[1] + (B[1] - A[1]) * amount)},${Math.round(A[2] + (B[2] - A[2]) * amount)})`;
   }
 
+  /** Numeric RGB lerp — avoids string churn in the leaf hot path. */
+  function lerpRgb(a, b, t) {
+    const amount = clamp(t);
+    return [
+      a[0] + (b[0] - a[0]) * amount,
+      a[1] + (b[1] - a[1]) * amount,
+      a[2] + (b[2] - a[2]) * amount,
+    ];
+  }
+
+  function rgbToCss(rgb) {
+    return `rgb(${Math.round(rgb[0])},${Math.round(rgb[1])},${Math.round(rgb[2])})`;
+  }
+
 
   // ============================================================
   // LEAF COLOR
@@ -173,58 +187,48 @@
     vitality,
     poison
   ) {
-    const healthyBase = lerpColor(
-      colors.leafDark,
-      colors.leaf,
-      tint
-    );
+    let palette = colors._leafRgb;
+    if (!palette) {
+      palette = colors._leafRgb = {
+        leafDark: parseColor(colors.leafDark),
+        leaf: parseColor(colors.leaf),
+        leafLime: parseColor(colors.leafLime),
+        leafHighlight: parseColor(colors.leafHighlight),
+        leafDry: parseColor(colors.leafDry),
+        leafAutumn: parseColor(colors.leafAutumn),
+        leafDead: parseColor(colors.leafDead),
+      };
+    }
 
-    const healthyBright = lerpColor(
+    const healthyBase = lerpRgb(palette.leafDark, palette.leaf, tint);
+
+    const healthyBright = lerpRgb(
       healthyBase,
-      colors.leafLime,
-      clamp(
-        vitality * 0.55 +
-        tint * 0.2
-      )
+      palette.leafLime,
+      clamp(vitality * 0.55 + tint * 0.2)
     );
 
-    const healthy = lerpColor(
+    const healthy = lerpRgb(
       healthyBright,
-      colors.leafHighlight,
+      palette.leafHighlight,
       clamp(vitality - 0.45) * 0.7
     );
 
     poison = clamp(poison);
 
     if (poison < 0.28) {
-      return lerpColor(
-        healthy,
-        colors.leafHighlight,
-        vitality * 0.25
-      );
+      return rgbToCss(lerpRgb(healthy, palette.leafHighlight, vitality * 0.25));
     }
 
     if (poison < 0.55) {
-      return lerpColor(
-        healthy,
-        colors.leafDry,
-        (poison - 0.28) / 0.27
-      );
+      return rgbToCss(lerpRgb(healthy, palette.leafDry, (poison - 0.28) / 0.27));
     }
 
     if (poison < 0.78) {
-      return lerpColor(
-        colors.leafDry,
-        colors.leafAutumn,
-        (poison - 0.55) / 0.23
-      );
+      return rgbToCss(lerpRgb(palette.leafDry, palette.leafAutumn, (poison - 0.55) / 0.23));
     }
 
-    return lerpColor(
-      colors.leafAutumn,
-      colors.leafDead,
-      (poison - 0.78) / 0.22
-    );
+    return rgbToCss(lerpRgb(palette.leafAutumn, palette.leafDead, (poison - 0.78) / 0.22));
   }
 
 
@@ -1295,11 +1299,19 @@
       start.y -
       branch.startY;
 
-    const shiftedPoints =
-      points.map((p, i) => ({
-        x: p.x + dx + windXAtIndex(i, points.length, wind, branch, time),
-        y: p.y + dy,
-      }));
+    let shiftedPoints = branch._shiftedPoints;
+    if (!shiftedPoints || shiftedPoints.length !== points.length) {
+      shiftedPoints = branch._shiftedPoints = new Array(points.length);
+      for (let i = 0; i < points.length; i += 1) {
+        shiftedPoints[i] = { x: 0, y: 0 };
+      }
+    }
+    for (let i = 0; i < points.length; i += 1) {
+      const p = points[i];
+      shiftedPoints[i].x =
+        p.x + dx + windXAtIndex(i, points.length, wind, branch, time);
+      shiftedPoints[i].y = p.y + dy;
+    }
 
     const shiftedMetrics =
       metrics;
