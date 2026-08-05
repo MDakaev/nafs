@@ -1,23 +1,12 @@
-# Tree SVG stages
+# Tree assets (legacy)
 
-Lightweight botanical stages for the spiritual tree. Total ~13KB raw.
+Canvas GrowingTree replaced the SVG stage set.
 
-| File | Stage |
-|------|-------|
-| `00-soil.svg` | empty soil |
-| `01-seed.svg` | seed under mound |
-| `02-sprout-tiny.svg` | tiny sprout |
-| `03-sprout.svg` | sprout |
-| `04-treelet.svg` | little tree |
-| `05-sapling.svg` | sapling |
-| `06-young.svg` | young tree |
+Old stage files (`00-soil.svg` … `06-young.svg`) were removed in the
+code-audit pass. Restore from git history if you need them:
 
-Each SVG uses layers:
-- `.layer-soil` — ground
-- `.layer-alive` — living growth / trunk+crown
-- `.layer-dry` — yellow / dry parts
-- `.layer-dead` — black / rotten parts
-- `.layer-poison` — nafs marks
-- `.layer-light` — soft sun
-
-Replace these files to upgrade art without touching app logic. Keep viewBox `0 0 200 200` and the same layer class names.
+```bash
+git checkout HEAD~1 -- assets/tree/
+# or from before this commit:
+git log --oneline -- assets/tree/
+```
