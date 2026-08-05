@@ -1079,6 +1079,102 @@ button {
   background: transparent;
   font-size: 11px;
 }
+.guide-open-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 11px;
+}
+.guide-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  pointer-events: auto;
+}
+.guide-overlay[hidden] {
+  display: none;
+}
+.guide-hole {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px var(--overlay);
+  pointer-events: auto;
+  transition:
+    top 0.28s ease,
+    left 0.28s ease,
+    width 0.28s ease,
+    height 0.28s ease,
+    border-radius 0.28s ease;
+}
+.guide-hole.is-hidden {
+  opacity: 1;
+  width: 0;
+  height: 0;
+  top: 50%;
+  left: 50%;
+  border-radius: 0;
+}
+.guide-card {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  z-index: 1;
+  max-height: calc(100% - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: auto;
+  padding: 18px 18px 16px;
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  transition: top 0.28s ease, bottom 0.28s ease;
+}
+.guide-progress {
+  margin-bottom: 8px;
+  color: var(--faint);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.guide-card h3 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+.guide-card p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.guide-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.guide-skip {
+  padding: 10px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.guide-next {
+  min-width: 110px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
 .toast {
   position: absolute;
   left: 50%;

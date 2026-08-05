@@ -589,6 +589,168 @@
     syncLayerA11y();
   }
 
+  const GUIDE_SEEN_KEY = "nafs.guide.seen";
+  const GUIDE_PAD = 10;
+  const GUIDE_STEPS = [
+    { target: "#speech", titleKey: "guide1Title", bodyKey: "guide1Body", radius: 18 },
+    { target: ".actions", titleKey: "guide2Title", bodyKey: "guide2Body", radius: 18 },
+    { target: "#balanceCard", titleKey: "guide3Title", bodyKey: "guide3Body", radius: 20 },
+    { target: "#treeStage", titleKey: "guide4Title", bodyKey: "guide4Body", radius: 22 },
+    { target: "#openMenu", titleKey: "guide5Title", bodyKey: "guide5Body", radius: 14 },
+    { target: null, titleKey: "guide6Title", bodyKey: "guide6Body" },
+  ];
+
+  let guideStep = -1;
+  let guideActive = false;
+
+  function isGuideSeen() {
+    return localStorage.getItem(GUIDE_SEEN_KEY) === "1";
+  }
+
+  function markGuideSeen() {
+    localStorage.setItem(GUIDE_SEEN_KEY, "1");
+  }
+
+  function exitTreeFocusIfNeeded() {
+    if (!state.treeFocus) return;
+    state.treeFocus = false;
+    cancelTreeFocusAnimation();
+    renderTree();
+  }
+
+  function positionGuideStep() {
+    const overlay = $("guideOverlay");
+    const hole = $("guideHole");
+    const card = $("guideCard");
+    if (!overlay || !hole || !card || guideStep < 0) return;
+
+    const step = GUIDE_STEPS[guideStep];
+    const shell = $("app");
+    const shellRect = shell.getBoundingClientRect();
+
+    $("guideProgress").textContent = `${guideStep + 1} / ${GUIDE_STEPS.length}`;
+    $("guideTitle").textContent = t(step.titleKey);
+    $("guideBody").textContent = t(step.bodyKey);
+    const isLast = guideStep === GUIDE_STEPS.length - 1;
+    $("guideNext").textContent = t(isLast ? "guideDone" : "guideNext");
+    $("guideSkip").hidden = isLast;
+
+    let holeRect = null;
+    if (step.target) {
+      const el = document.querySelector(step.target);
+      if (el) {
+        el.scrollIntoView({ block: "nearest", inline: "nearest" });
+        const rect = el.getBoundingClientRect();
+        holeRect = {
+          top: rect.top - shellRect.top - GUIDE_PAD,
+          left: rect.left - shellRect.left - GUIDE_PAD,
+          width: rect.width + GUIDE_PAD * 2,
+          height: rect.height + GUIDE_PAD * 2,
+          radius: step.radius ?? 16,
+        };
+      }
+    }
+
+    if (holeRect) {
+      hole.classList.remove("is-hidden");
+      hole.style.top = `${Math.max(0, holeRect.top)}px`;
+      hole.style.left = `${Math.max(0, holeRect.left)}px`;
+      hole.style.width = `${holeRect.width}px`;
+      hole.style.height = `${holeRect.height}px`;
+      hole.style.borderRadius = `${holeRect.radius}px`;
+    } else {
+      // Zero-size hole keeps the full-screen dim via box-shadow.
+      hole.classList.add("is-hidden");
+      hole.style.top = "50%";
+      hole.style.left = "50%";
+      hole.style.width = "0";
+      hole.style.height = "0";
+      hole.style.borderRadius = "0";
+    }
+
+    card.style.top = "";
+    card.style.bottom = "";
+    const cardHeight = card.offsetHeight || 180;
+    const shellH = shellRect.height;
+    const gap = 14;
+    const safeTop = 16;
+    const safeBottom = 16;
+
+    if (holeRect) {
+      const spaceBelow = shellH - (holeRect.top + holeRect.height) - gap - safeBottom;
+      const spaceAbove = holeRect.top - gap - safeTop;
+      if (spaceBelow >= cardHeight + 8 || spaceBelow >= spaceAbove) {
+        const top = Math.min(holeRect.top + holeRect.height + gap, shellH - cardHeight - safeBottom);
+        card.style.top = `${Math.max(safeTop, top)}px`;
+      } else {
+        const bottom = Math.max(safeBottom, shellH - holeRect.top + gap);
+        card.style.bottom = `${bottom}px`;
+      }
+    } else {
+      card.style.top = `${Math.max(safeTop, (shellH - cardHeight) / 2)}px`;
+    }
+  }
+
+  function endGuide() {
+    if (!guideActive) return;
+    guideActive = false;
+    guideStep = -1;
+    markGuideSeen();
+    const overlay = $("guideOverlay");
+    if (overlay) {
+      overlay.hidden = true;
+      overlay.setAttribute("aria-hidden", "true");
+    }
+    window.removeEventListener("resize", positionGuideStep);
+    window.removeEventListener("orientationchange", positionGuideStep);
+  }
+
+  function showGuideStep(index) {
+    if (index < 0 || index >= GUIDE_STEPS.length) {
+      endGuide();
+      return;
+    }
+    guideStep = index;
+    requestAnimationFrame(() => {
+      positionGuideStep();
+      requestAnimationFrame(positionGuideStep);
+    });
+  }
+
+  function startGuide() {
+    if (guideActive) return;
+    closeLayers();
+    exitTreeFocusIfNeeded();
+    openPage("home");
+
+    const overlay = $("guideOverlay");
+    if (!overlay) return;
+    guideActive = true;
+    overlay.hidden = false;
+    overlay.setAttribute("aria-hidden", "false");
+    window.addEventListener("resize", positionGuideStep);
+    window.addEventListener("orientationchange", positionGuideStep);
+    showGuideStep(0);
+    $("guideNext")?.focus?.();
+    analytics().track("guide_start");
+  }
+
+  function advanceGuide() {
+    if (!guideActive) return;
+    if (guideStep >= GUIDE_STEPS.length - 1) {
+      analytics().track("guide_complete");
+      endGuide();
+      return;
+    }
+    showGuideStep(guideStep + 1);
+  }
+
+  function skipGuide() {
+    if (!guideActive) return;
+    analytics().track("guide_skip", { step: guideStep + 1 });
+    endGuide();
+  }
+
   function applyTheme(choice, { track = true } = {}) {
     const prev = state.theme;
     state.theme = choice;
@@ -744,6 +906,7 @@
     const weekNames = t("week");
     $("todayLabel").innerHTML =
       `${now.getDate()} ${monthNames[now.getMonth()]}<br>${weekNames[now.getDay()]}`;
+    if (guideActive) positionGuideStep();
   }
 
   // --- Events ---
@@ -805,9 +968,19 @@
   });
   $("treeStage").addEventListener("click", toggleTreeFocus);
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && guideActive) {
+      event.preventDefault();
+      skipGuide();
+      return;
+    }
     if (event.key === "Escape" && state.treeFocus) {
       toggleTreeFocus({ force: true });
     }
+  });
+  $("guideNext")?.addEventListener("click", advanceGuide);
+  $("guideSkip")?.addEventListener("click", skipGuide);
+  $("openGuide")?.addEventListener("click", () => {
+    startGuide();
   });
   $("undo").addEventListener("click", undo);
   document.querySelectorAll("[data-reset-period]").forEach((b) => {
@@ -1032,5 +1205,10 @@
       });
       analytics().params({ lang: state.lang, theme: state.theme });
       analytics().hit();
+      if (!isGuideSeen()) {
+        setTimeout(() => {
+          if (!isGuideSeen() && !guideActive) startGuide();
+        }, 450);
+      }
     });
 })();

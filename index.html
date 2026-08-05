@@ -258,6 +258,12 @@
             <button class="option" data-lang-choice="en">EN</button>
           </div>
         </div>
+        <div class="setting-row">
+          <span data-i18n="guideOpenLabel">User guide</span>
+          <button type="button" class="guide-open-btn" id="openGuide" data-i18n="guideOpen">
+            Open
+          </button>
+        </div>
         <div class="reset-block">
           <div class="donate-caption" data-i18n="resetMarks">Delete my marks</div>
           <div class="reset-periods" id="resetPeriods">
@@ -305,6 +311,30 @@
           Install
         </button>
       </section>
+
+      <div class="guide-overlay" id="guideOverlay" hidden aria-hidden="true">
+        <div class="guide-hole" id="guideHole" aria-hidden="true"></div>
+        <div
+          class="guide-card"
+          id="guideCard"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="guideTitle"
+          aria-describedby="guideBody"
+        >
+          <div class="guide-progress" id="guideProgress">1 / 6</div>
+          <h3 id="guideTitle"></h3>
+          <p id="guideBody"></p>
+          <div class="guide-actions">
+            <button type="button" class="guide-skip" id="guideSkip" data-i18n="guideSkip">
+              Skip
+            </button>
+            <button type="button" class="guide-next" id="guideNext" data-i18n="guideNext">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="toast" id="toast"></div>
 
