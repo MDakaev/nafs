@@ -16,14 +16,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Marcellus&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Marcellus&family=Scheherazade+New:wght@400;700&display=swap"
       rel="stylesheet"
       media="print"
-      onload="this.media='all'"
+      onload="this.media = 'all'"
     />
     <noscript>
       <link
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Marcellus&display=swap"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Marcellus&family=Scheherazade+New:wght@400;700&display=swap"
         rel="stylesheet"
       />
     </noscript>
@@ -32,6 +32,34 @@
   <body>
     <!-- App shell: one phone-like surface on desktop, full-bleed on mobile -->
     <main class="app-shell" id="app">
+      <div class="ornament" aria-hidden="true">
+        <div class="ornament-script">
+          <span>نَفْس</span>
+          <span>صَبْر</span>
+          <span>إِيمَان</span>
+          <span>ذِكْر</span>
+          <span>شُكْر</span>
+          <span>تَقْوَى</span>
+          <span>حَمْد</span>
+          <span>نُور</span>
+          <span>نَفْس</span>
+          <span>صَبْر</span>
+          <span>إِيمَان</span>
+          <span>ذِكْر</span>
+          <span>شُكْر</span>
+          <span>تَقْوَى</span>
+          <span>حَمْد</span>
+          <span>نُور</span>
+          <span>نَفْس</span>
+          <span>صَبْر</span>
+          <span>إِيمَان</span>
+          <span>ذِكْر</span>
+          <span>شُكْر</span>
+          <span>تَقْوَى</span>
+          <span>حَمْد</span>
+          <span>نُور</span>
+        </div>
+      </div>
       <div class="grain"></div>
 
       <!-- HOME -->
@@ -173,7 +201,9 @@
       <aside class="drawer" id="drawer" aria-label="Menu">
         <div class="drawer-top">
           <div class="drawer-logo">Nafs <span data-i18n="brandAr">نَفْس</span></div>
-          <button class="icon-button" id="closeMenu" data-i18n-aria="closeMenu" aria-label="Close">×</button>
+          <button class="icon-button" id="closeMenu" data-i18n-aria="closeMenu" aria-label="Close">
+            ×
+          </button>
         </div>
         <p class="drawer-caption" data-i18n="menuSpace">A space for attention</p>
         <nav class="menu-list">
@@ -359,25 +389,24 @@
           <span class="seed">Seed: <b id="treeDebugSeed">12345</b></span>
         </div>
       </aside>
-
     </main>
 
-  <noscript
-    ><div>
-      <img
-        src="https://mc.yandex.ru/watch/111273371"
-        style="position: absolute; left: -9999px"
-        alt=""
-      /></div
-  ></noscript>
-  <script src="./js/config.js"></script>
-  <script src="./js/analytics.js"></script>
-  <script src="./js/i18n.js"></script>
-  <script src="./js/motivations.js"></script>
-  <script src="./js/growing-tree/treeGenerator.js"></script>
-  <script src="./js/growing-tree/treeRenderer.js"></script>
-  <script src="./js/growing-tree/treeAnimation.js"></script>
-  <script src="./js/tree.js"></script>
-  <script src="./js/app.js"></script>
+    <noscript
+      ><div>
+        <img
+          src="https://mc.yandex.ru/watch/111273371"
+          style="position: absolute; left: -9999px"
+          alt=""
+        /></div
+    ></noscript>
+    <script src="./js/config.js"></script>
+    <script src="./js/analytics.js"></script>
+    <script src="./js/i18n.js"></script>
+    <script src="./js/motivations.js"></script>
+    <script src="./js/growing-tree/treeGenerator.js"></script>
+    <script src="./js/growing-tree/treeRenderer.js"></script>
+    <script src="./js/growing-tree/treeAnimation.js"></script>
+    <script src="./js/tree.js"></script>
+    <script src="./js/app.js"></script>
   </body>
 </html>

@@ -136,16 +136,16 @@ window.NAFS_MOTIVATIONS = {
 window.NAFS_MARK_DHIKR = {
   ru: {
     iman: [
-      ["АльхамдулиЛлах", "Хвала Аллаху."],
-      ["СубханаЛлах", "Слава Аллаху."],
+      ["АльхамдулиЛлах", "Хвала Аллаху.", "الْحَمْدُ لِلَّهِ"],
+      ["СубханаЛлах", "Слава Аллаху.", "سُبْحَانَ اللَّهِ"],
     ],
-    nafs: ["АстагфируЛлах", "Попроси прощение у Аллаха."],
+    nafs: ["АстагфируЛлах", "Попроси прощение у Аллаха.", "أَسْتَغْفِرُ اللَّهَ"],
   },
   en: {
     iman: [
-      ["AlhamduliLlah", "All praise is for Allah."],
-      ["SubhanaLlah", "Glory be to Allah."],
+      ["AlhamduliLlah", "All praise is for Allah.", "الْحَمْدُ لِلَّهِ"],
+      ["SubhanaLlah", "Glory be to Allah.", "سُبْحَانَ اللَّهِ"],
     ],
-    nafs: ["AstaghfiruLlah", "Ask Allah for forgiveness."],
+    nafs: ["AstaghfiruLlah", "Ask Allah for forgiveness.", "أَسْتَغْفِرُ اللَّهَ"],
   },
 };

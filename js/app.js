@@ -154,15 +154,24 @@
   function renderSpeechItem(item, animate = false, opts = {}) {
     const title = item[0] || "";
     const body = item[1] || "";
+    const arabic = item[2] || "";
     const speech = $("speech");
+    const arabicEl = speech.querySelector(".arabic");
+    const showArabicLine = Boolean(opts.dhikr && arabic);
     speech.classList.toggle("is-dhikr", Boolean(opts.dhikr));
+    speech.classList.toggle("has-arabic-line", showArabicLine);
     speech.classList.toggle("is-empty-body", !body);
     if (animate) {
       $("speechTitle").style.animation = "none";
       $("speechBody").style.animation = "none";
+      if (arabicEl) arabicEl.style.animation = "none";
       void $("speechTitle").offsetWidth;
       $("speechTitle").style.animation = "";
       $("speechBody").style.animation = "";
+      if (arabicEl) arabicEl.style.animation = "";
+    }
+    if (arabicEl) {
+      arabicEl.textContent = showArabicLine ? arabic : t("sabr");
     }
     $("speechTitle").textContent = title;
     $("speechBody").textContent = body;
