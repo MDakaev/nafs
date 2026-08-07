@@ -131,6 +131,10 @@
         const v = Number(params.get("treeProgress"));
         if (!Number.isNaN(v)) progress = Math.max(0, Math.min(1, v));
       }
+      if (params.has("demoTree")) {
+        // Demo preview: +30% then +20% growth.
+        progress = Math.max(0, Math.min(1, progress * 1.3 * 1.2));
+      }
       if (params.has("treeVitality")) {
         const v = Number(params.get("treeVitality"));
         if (!Number.isNaN(v)) {

@@ -199,7 +199,22 @@
         this.poison
       );
 
-      // Full-bleed soil fades in as the stage grows.
+      ctx.save();
+      ctx.translate(w / 2, groundY);
+      ctx.scale(safeScale, safeScale);
+      api.renderTree(ctx, this.model, {
+        progress: this.progress,
+        time: this._time,
+        animated: this.animated,
+        vitality: this.vitality,
+        poison: this.poison,
+        colors: this.colors,
+        // Focus mode uses full-bleed soil in front instead of the mound.
+        skipSoil: focusT > 0.28,
+      });
+      ctx.restore();
+
+      // Foreground soil: covers roots and the sprout base when opened.
       if (focusT > 0.02) {
         api.drawFullBleedSoil(
           ctx,
@@ -212,20 +227,6 @@
           focusT
         );
       }
-
-      ctx.save();
-      ctx.translate(w / 2, groundY);
-      ctx.scale(safeScale, safeScale);
-      api.renderTree(ctx, this.model, {
-        progress: this.progress,
-        time: this._time,
-        animated: this.animated,
-        vitality: this.vitality,
-        poison: this.poison,
-        colors: this.colors,
-        skipSoil: focusT > 0.55,
-      });
-      ctx.restore();
     }
 
     _shouldRun() {

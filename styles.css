@@ -288,7 +288,7 @@ button {
 .speech.is-dhikr .arabic {
   display: none;
 }
-.speech.is-dhikr.has-arabic-line .arabic {
+.speech.has-arabic-line .arabic {
   display: block;
   margin-bottom: 2px;
   color: var(--green);
@@ -404,7 +404,7 @@ button {
   --leaf-dry: #b7a35c;
   --leaf-dead: #6b5a3c;
   --bark: #5a4634;
-  --soil: #6d5a42;
+  --soil: #4a3b2c;
   --sky-a: #e8efe4;
   --sky-b: #d5e0d2;
   position: relative;
@@ -433,7 +433,7 @@ button {
 .tree-stage[data-health="living"] {
   --leaf: #2f9a62;
   --bark: #4f3d2c;
-  --soil: #6a5740;
+  --soil: #46382b;
   --sky-a: #eef5e8;
   --sky-b: #d7e8d4;
 }
@@ -455,7 +455,7 @@ button {
   --leaf-dry: #a8893a;
   --leaf-dead: #5c4b32;
   --bark: #3f342a;
-  --soil: #4d4033;
+  --soil: #3a3228;
   --sky-a: #ddd6c8;
   --sky-b: #bdb3a3;
 }

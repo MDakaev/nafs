@@ -58,9 +58,9 @@
 
     particle: "rgba(120, 150, 120, 0.28)",
 
-    soil: "#6d5a42",
-    soilDark: "#4d4030",
-    soilLight: "#806b4e",
+    soil: "#4a3b2c",
+    soilDark: "#2a2118",
+    soilLight: "#635040",
 
     seed: "#7a5b35",
     seedLight: "#c4a56a",
@@ -551,6 +551,42 @@
   // SOIL
   // ============================================================
 
+  /** Tiny cached grain tile — built once, no network, almost free to stamp. */
+  let soilGrainCanvas = null;
+  let soilGrainPatternCached = null;
+
+  function soilGrainPattern(ctx) {
+    if (!soilGrainCanvas) {
+      const tile = document.createElement("canvas");
+      tile.width = 48;
+      tile.height = 48;
+      const g = tile.getContext("2d");
+      for (let i = 0; i < 70; i += 1) {
+        const x = (i * 17 + (i * i) * 3) % 48;
+        const y = (i * 29 + i * 7) % 48;
+        const dark = i % 3 !== 0;
+        g.fillStyle = dark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)";
+        g.fillRect(x, y, i % 5 === 0 ? 2 : 1, 1);
+      }
+      // A few longer flecks for earth crumb.
+      g.strokeStyle = "rgba(0,0,0,0.12)";
+      g.lineWidth = 1;
+      for (let i = 0; i < 8; i += 1) {
+        const x = (i * 13) % 48;
+        const y = (i * 19 + 5) % 48;
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x + 2 + (i % 3), y + 1);
+        g.stroke();
+      }
+      soilGrainCanvas = tile;
+    }
+    if (!soilGrainPatternCached) {
+      soilGrainPatternCached = ctx.createPattern(soilGrainCanvas, "repeat");
+    }
+    return soilGrainPatternCached;
+  }
+
   function drawSoil(
     ctx,
     colors,
@@ -563,15 +599,11 @@
       clamp(vitality)
     );
 
-    const visibility =
-      clamp(
-        0.35 +
-        progress * 0.65
-      );
+    // Mound sits ~20% lower than the original peak.
+    const peak = -17.6;
 
     ctx.save();
-
-    ctx.globalAlpha = visibility;
+    ctx.globalAlpha = 1;
 
     // Ground shadow.
     ctx.fillStyle =
@@ -581,7 +613,7 @@
 
     ctx.ellipse(
       0,
-      12,
+      14,
       78,
       9,
       0,
@@ -592,103 +624,79 @@
     ctx.fill();
 
     // Main soil mound.
-    ctx.fillStyle = soil;
-
     ctx.beginPath();
 
-    ctx.moveTo(-64, 2);
+    ctx.moveTo(-64, 4);
 
     ctx.bezierCurveTo(
       -42,
-      -15,
+      peak + 5,
       -17,
-      -22,
+      peak,
       0,
-      -22
+      peak
     );
 
     ctx.bezierCurveTo(
       17,
-      -22,
+      peak,
       42,
-      -15,
+      peak + 5,
       64,
-      2
+      4
     );
 
     ctx.bezierCurveTo(
       41,
-      13,
+      15,
       18,
-      16,
+      18,
       0,
-      16
+      18
     );
 
     ctx.bezierCurveTo(
       -18,
-      16,
+      18,
       -41,
-      13,
+      15,
       -64,
-      2
+      4
     );
 
     ctx.closePath();
 
+    ctx.fillStyle = soil;
     ctx.fill();
+
+    const grain = soilGrainPattern(ctx);
+    if (grain) {
+      ctx.save();
+      ctx.clip();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = grain;
+      ctx.fill();
+      ctx.restore();
+    }
 
     // Upper soil ridge.
     ctx.strokeStyle =
-      "rgba(255,255,255,0.07)";
+      "rgba(255,255,255,0.06)";
 
     ctx.lineWidth = 1;
 
     ctx.beginPath();
 
-    ctx.moveTo(-40, 0);
+    ctx.moveTo(-40, 2);
 
     ctx.quadraticCurveTo(
       0,
-      -11,
+      peak + 8,
       40,
-      0
+      2
     );
 
     ctx.stroke();
-
-    // Tiny soil particles.
-    if (progress > 0.12) {
-      ctx.fillStyle =
-        colors.soilLight;
-
-      ctx.globalAlpha =
-        0.15 * vitality;
-
-      for (let i = 0; i < 12; i++) {
-        const x =
-          Math.sin(i * 91.17) * 45;
-
-        const y =
-          Math.cos(i * 41.37) * 7;
-
-        const r =
-          0.5 +
-          (i % 3) * 0.35;
-
-        ctx.beginPath();
-
-        ctx.arc(
-          x,
-          y,
-          r,
-          0,
-          Math.PI * 2
-        );
-
-        ctx.fill();
-      }
-    }
 
     ctx.restore();
   }
@@ -718,21 +726,22 @@
       clamp(vitality)
     );
 
-    const visibility = clamp(0.4 + progress * 0.6) * clamp(alpha);
-    const soilH = Math.max(34, Math.min(78, height * 0.145));
-    const crest = groundY - soilH * 0.42;
+    const fade = clamp(alpha);
+    const soilH = Math.max(44, Math.min(96, height * 0.185));
+    // Crest ~20% lower than before (was soilH * 0.58).
+    const crest = groundY - soilH * 0.464;
 
     ctx.save();
-    ctx.globalAlpha = visibility;
+    ctx.globalAlpha = fade;
 
     // Soft contact shadow under the soil lip.
     ctx.fillStyle = colors.deepShadow;
     ctx.beginPath();
     ctx.ellipse(
       width * 0.5,
-      groundY + soilH * 0.18,
-      width * 0.48,
-      soilH * 0.22,
+      groundY + soilH * 0.22,
+      width * 0.5,
+      soilH * 0.26,
       0,
       0,
       Math.PI * 2
@@ -740,54 +749,83 @@
     ctx.fill();
 
     // Full-width ground with a gentle living crest.
-    ctx.fillStyle = soil;
     ctx.beginPath();
     ctx.moveTo(0, height + 2);
-    ctx.lineTo(0, groundY + 6);
+    ctx.lineTo(0, groundY + 10);
     ctx.quadraticCurveTo(
-      width * 0.18,
+      width * 0.16,
       crest,
       width * 0.5,
-      crest + soilH * 0.08
+      crest + soilH * 0.1
     );
     ctx.quadraticCurveTo(
-      width * 0.82,
+      width * 0.84,
       crest,
       width,
-      groundY + 6
+      groundY + 10
+    );
+    ctx.lineTo(width, height + 2);
+    ctx.closePath();
+
+    ctx.fillStyle = soil;
+    ctx.fill();
+
+    // Darker subsurface band — reads as real soil depth.
+    ctx.fillStyle = colors.soilDark;
+    ctx.beginPath();
+    ctx.moveTo(0, height + 2);
+    ctx.lineTo(0, groundY + soilH * 0.28);
+    ctx.quadraticCurveTo(
+      width * 0.5,
+      groundY + soilH * 0.08,
+      width,
+      groundY + soilH * 0.28
     );
     ctx.lineTo(width, height + 2);
     ctx.closePath();
     ctx.fill();
 
+    // Cached grain stamp (one fill, no per-frame particle loop).
+    const grain = soilGrainPattern(ctx);
+    if (grain) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, height + 2);
+      ctx.lineTo(0, groundY + 10);
+      ctx.quadraticCurveTo(
+        width * 0.16,
+        crest,
+        width * 0.5,
+        crest + soilH * 0.1
+      );
+      ctx.quadraticCurveTo(
+        width * 0.84,
+        crest,
+        width,
+        groundY + 10
+      );
+      ctx.lineTo(width, height + 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.globalAlpha = fade * 0.4;
+      ctx.fillStyle = grain;
+      ctx.fillRect(0, crest - 4, width, height - crest + 8);
+      ctx.restore();
+    }
+
     // Ridge highlight.
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.globalAlpha = fade;
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(0, groundY + 4);
+    ctx.moveTo(0, groundY + 8);
     ctx.quadraticCurveTo(
       width * 0.5,
-      crest + soilH * 0.2,
+      crest + soilH * 0.22,
       width,
-      groundY + 4
+      groundY + 8
     );
     ctx.stroke();
-
-    // Sparse grit.
-    if (progress > 0.08) {
-      ctx.fillStyle = colors.soilLight;
-      ctx.globalAlpha = 0.14 * clamp(vitality);
-      for (let i = 0; i < 28; i += 1) {
-        const x = ((i * 97.3) % 1) * width;
-        const y =
-          groundY -
-          soilH * 0.15 +
-          ((i * 41.7) % 1) * soilH * 0.55;
-        ctx.beginPath();
-        ctx.arc(x, y, 0.6 + (i % 3) * 0.35, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
 
     ctx.restore();
   }
@@ -816,7 +854,8 @@
   }
 
   /**
-   * Sun dims as Nafs/poison rises; clouds drift in and veil it.
+   * Soft sunset sun — orange near the disc, light turns white across the stage.
+   * Contour is lightly blurred; Nafs dims warmth but never kills the source.
    */
   function drawSun(
     ctx,
@@ -833,100 +872,101 @@
     vitality = clamp(vitality);
 
     const pulse =
-      0.88 +
-      Math.sin(time * 1.35) * 0.12 +
-      Math.sin(time * 0.55) * 0.04;
+      0.96 +
+      Math.sin(time * 1.05) * 0.03 +
+      Math.sin(time * 0.4) * 0.015;
 
-    // High Nafs kills brightness; vitality keeps a little warmth.
-    const clarity = clamp(1 - poison * 0.92 + vitality * 0.08);
-    const dim = clamp(0.18 + clarity * 0.82);
+    const clarity = clamp(1 - poison * 0.72 + vitality * 0.1);
+    const dim = clamp(0.45 + clarity * 0.55);
+    const bright = 1.5;
 
     const x = width * 0.78;
     const y = height * 0.13;
-    const baseR = Math.min(width, height) * 0.075;
-    const r = baseR * (0.92 + pulse * 0.08);
-    const glow = clamp(0.2 + vitality * 0.45) * dim;
+    const baseR = Math.min(width, height) * 0.078;
+    const r = baseR * (0.97 + pulse * 0.03);
+    const glow = clamp(0.32 + vitality * 0.48) * dim * bright * pulse;
 
     ctx.save();
+
+    // Screen light: sunset-orange at the sun → white across the full stage.
+    const spillR = Math.hypot(width, height) * 1.05;
+    const spill = ctx.createRadialGradient(x, y, r * 0.35, x, y, spillR);
+    spill.addColorStop(0, `rgba(255, 148, 72, ${0.42 * glow})`);
+    spill.addColorStop(0.16, `rgba(255, 186, 120, ${0.26 * glow})`);
+    spill.addColorStop(0.4, `rgba(255, 236, 214, ${0.16 * glow})`);
+    spill.addColorStop(0.72, `rgba(255, 252, 248, ${0.08 * glow})`);
+    spill.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = spill;
+    ctx.fillRect(0, 0, width, height);
+
     ctx.translate(x, y);
 
-    // Soft halo — fades hard under heavy poison.
-    const halo = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 3.2);
-    halo.addColorStop(
-      0,
-      `rgba(255, 214, 120, ${0.3 * glow * pulse})`
-    );
-    halo.addColorStop(
-      0.45,
-      `rgba(255, 196, 90, ${0.12 * glow})`
-    );
-    halo.addColorStop(1, "rgba(255, 196, 90, 0)");
-    ctx.fillStyle = halo;
+    // Soft bloom around the disc (pre-blur warmth).
+    const bloom = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 3.6);
+    bloom.addColorStop(0, `rgba(255, 210, 150, ${0.38 * glow})`);
+    bloom.addColorStop(0.35, `rgba(255, 168, 96, ${0.16 * glow})`);
+    bloom.addColorStop(0.7, `rgba(255, 240, 220, ${0.06 * glow})`);
+    bloom.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = bloom;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 3.2, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 3.6, 0, Math.PI * 2);
     ctx.fill();
 
-    // Rays shrink/fade with poison.
-    const rayAlpha = 0.18 * glow * pulse * clarity;
-    if (rayAlpha > 0.02) {
-      const rayCount = 10;
-      ctx.strokeStyle = `rgba(255, 210, 110, ${rayAlpha})`;
-      ctx.lineWidth = Math.max(1, r * 0.08);
-      ctx.lineCap = "round";
-      for (let i = 0; i < rayCount; i += 1) {
-        const a =
-          (i / rayCount) * Math.PI * 2 +
-          time * 0.12;
-        const inner = r * 1.25;
-        const outer =
-          r *
-          (1.55 + clarity * 0.45 + Math.sin(time * 2 + i) * 0.14);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
-        ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
-        ctx.stroke();
-      }
-    }
+    // Light contour blur — softens the planetary hard edge.
+    const blurPx = Math.max(2.5, Math.min(7, r * 0.18));
+    ctx.filter = `blur(${blurPx}px)`;
 
-    // Core — shifts cooler/greyer as poison rises.
-    const core = ctx.createRadialGradient(
-      -r * 0.2,
-      -r * 0.25,
-      r * 0.1,
+    const body = ctx.createRadialGradient(
+      -r * 0.1,
+      -r * 0.12,
       0,
       0,
-      r
+      0,
+      r * 1.15
     );
-    const hot = lerpColor("#fff6d2", "#d8d2c4", poison * 0.85);
-    const mid = lerpColor("#ffd56a", "#9a9488", poison * 0.9);
-    const rim = lerpColor("#e8a83a", "#6a6560", poison * 0.95);
-    core.addColorStop(0, hot);
-    core.addColorStop(0.45, mid);
-    core.addColorStop(1, rim);
+    const core = lerpColor("#fffaf4", "#ebe6de", poison * 0.5);
+    const warm = lerpColor("#ffe0b8", "#c9bfb2", poison * 0.55);
+    const rim = lerpColor("#ff9a4a", "#9a9086", poison * 0.65);
+    body.addColorStop(0, core);
+    body.addColorStop(0.45, warm);
+    body.addColorStop(0.82, rim);
+    body.addColorStop(1, "rgba(255, 150, 70, 0)");
 
-    ctx.globalAlpha = (0.35 + glow * 0.5) * dim;
-    ctx.fillStyle = core;
+    ctx.globalAlpha = clamp(0.88 * dim);
+    ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.filter = "none";
+
+    // Crisp-ish hot center after blur, still soft.
+    const heart = ctx.createRadialGradient(
+      -r * 0.14,
+      -r * 0.18,
+      0,
+      0,
+      0,
+      r * 0.7
+    );
+    heart.addColorStop(0, `rgba(255, 255, 255, ${0.7 * dim})`);
+    heart.addColorStop(0.55, `rgba(255, 220, 170, ${0.28 * dim})`);
+    heart.addColorStop(1, "rgba(255, 180, 100, 0)");
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = heart;
+    ctx.beginPath();
+    ctx.arc(-r * 0.06, -r * 0.08, r * 0.7, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
 
-    // Clouds gather over the sun as Nafs grows.
-    const cover = clamp((poison - 0.08) / 0.72);
+    // Clouds gather with Nafs, but stay translucent — sun remains brighter.
+    const cover = clamp((poison - 0.12) / 0.78);
     if (cover <= 0.01) return;
 
     const drift = Math.sin(time * 0.35) * (8 + cover * 10);
-    const cloudColor = lerpColor(
-      "#f2efe6",
-      "#7a7670",
-      poison * 0.75
-    );
-    const cloudShade = lerpColor(
-      "#e4dfd4",
-      "#5c5854",
-      poison * 0.8
-    );
+    const cloudColor = lerpColor("#fff8f0", "#8c8882", poison * 0.7);
+    const cloudShade = lerpColor("#ffecdc", "#6e6a64", poison * 0.75);
 
     const puffs = [
       { x: -42, y: 6, s: 1.05, phase: 0.0, tint: cloudColor },
@@ -939,8 +979,7 @@
     const scaleBase = Math.min(width, height) / 280;
 
     puffs.forEach((puff, index) => {
-      // Heavier Nafs → more puffs opaque and overlapping the disc.
-      const show = clamp(cover * 1.35 - index * 0.12);
+      const show = clamp(cover * 1.1 - index * 0.14);
       if (show <= 0.02) return;
 
       const bob =
@@ -950,35 +989,11 @@
         ctx,
         x + puff.x * scaleBase + drift * (0.4 + index * 0.12),
         y + puff.y * scaleBase + bob,
-        puff.s * scaleBase * (0.95 + cover * 0.35),
-        show * (0.45 + poison * 0.5),
+        puff.s * scaleBase * (0.95 + cover * 0.28),
+        show * (0.22 + poison * 0.28),
         puff.tint
       );
     });
-
-    // Final veil so the sun almost vanishes at max poison.
-    if (cover > 0.55) {
-      ctx.save();
-      const veil = ctx.createRadialGradient(
-        x,
-        y,
-        r * 0.4,
-        x,
-        y,
-        r * 4
-      );
-      const veilAlpha = (cover - 0.55) / 0.45;
-      veil.addColorStop(
-        0,
-        `rgba(90, 88, 84, ${0.22 * veilAlpha})`
-      );
-      veil.addColorStop(1, "rgba(90, 88, 84, 0)");
-      ctx.fillStyle = veil;
-      ctx.beginPath();
-      ctx.arc(x, y, r * 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
   }
 
 
@@ -2125,7 +2140,23 @@
     );
 
     // ----------------------------------------------------------
-    // Ground
+    // Roots (under soil — buried)
+    // ----------------------------------------------------------
+
+    const roots =
+      Array.isArray(model.roots) ? model.roots : [];
+    const orderedRoots = Array.isArray(model.orderedRoots)
+      ? model.orderedRoots
+      : roots
+          .slice()
+          .sort((a, b) => (a.depth || 0) - (b.depth || 0));
+
+    orderedRoots.forEach((root) => {
+      drawRoot(ctx, root, progress, time, colors, windStrength);
+    });
+
+    // ----------------------------------------------------------
+    // Ground — foreground lip covers roots + buried sprout base
     // ----------------------------------------------------------
 
     if (!options.skipSoil) {
@@ -2147,22 +2178,6 @@
       vitality,
       colors
     );
-
-    // ----------------------------------------------------------
-    // Roots
-    // ----------------------------------------------------------
-
-    const roots =
-      Array.isArray(model.roots) ? model.roots : [];
-    const orderedRoots = Array.isArray(model.orderedRoots)
-      ? model.orderedRoots
-      : roots
-          .slice()
-          .sort((a, b) => (a.depth || 0) - (b.depth || 0));
-
-    orderedRoots.forEach((root) => {
-      drawRoot(ctx, root, progress, time, colors, windStrength);
-    });
 
     // ----------------------------------------------------------
     // Branches

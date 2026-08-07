@@ -60,11 +60,13 @@
   function maybeSeedDemoTree() {
     const host = location.hostname;
     const local = host === "localhost" || host === "127.0.0.1";
-    if (!local || !new URLSearchParams(location.search).has("demoTree")) return;
-    if (Object.keys(state.days || {}).length) return;
+    const params = new URLSearchParams(location.search);
+    if (!local || !params.has("demoTree")) return;
     const now = new Date();
     const days = {};
-    for (let i = 45; i >= 0; i -= 1) {
+    // Previous demo span was 45 days; +30% then +20% growth.
+    const span = Math.round(45 * 1.3 * 1.2);
+    for (let i = span; i >= 0; i -= 1) {
       const date = new Date(now);
       date.setDate(now.getDate() - i);
       const key = dayKey(date);
@@ -157,7 +159,7 @@
     const arabic = item[2] || "";
     const speech = $("speech");
     const arabicEl = speech.querySelector(".arabic");
-    const showArabicLine = Boolean(opts.dhikr && arabic);
+    const showArabicLine = Boolean(arabic);
     speech.classList.toggle("is-dhikr", Boolean(opts.dhikr));
     speech.classList.toggle("has-arabic-line", showArabicLine);
     speech.classList.toggle("is-empty-body", !body);
@@ -250,8 +252,7 @@
   }
 
   function setHomePixelRows(rows) {
-    $("homePage").style.gridTemplateRows =
-      `${rows.upper}px ${rows.tree}px ${rows.lower}px`;
+    $("homePage").style.gridTemplateRows = `${rows.upper}px ${rows.tree}px ${rows.lower}px`;
   }
 
   function clearHomePixelRows() {
@@ -531,9 +532,7 @@
     chart.innerHTML = data.groups
       .map((group) => {
         const label =
-          period === "year" && group.label.length > 3
-            ? group.label.slice(0, 3)
-            : group.label;
+          period === "year" && group.label.length > 3 ? group.label.slice(0, 3) : group.label;
         return `
         <div class="chart-group">
           <div class="bars">
@@ -689,7 +688,10 @@
       const spaceBelow = shellH - (holeRect.top + holeRect.height) - gap - safeBottom;
       const spaceAbove = holeRect.top - gap - safeTop;
       if (spaceBelow >= cardHeight + 8 || spaceBelow >= spaceAbove) {
-        const top = Math.min(holeRect.top + holeRect.height + gap, shellH - cardHeight - safeBottom);
+        const top = Math.min(
+          holeRect.top + holeRect.height + gap,
+          shellH - cardHeight - safeBottom
+        );
         card.style.top = `${Math.max(safeTop, top)}px`;
       } else {
         const bottom = Math.max(safeBottom, shellH - holeRect.top + gap);
@@ -1135,16 +1137,15 @@
       if (stageEl) {
         stageEl.style.setProperty("--tree-vitality", String(vitality));
         stageEl.style.setProperty("--tree-poison", String(poison));
-        const health =
-          window.NAFS_tree?.healthFromVitality?.(vitality, 1) || "mixed";
+        const health = window.NAFS_tree?.healthFromVitality?.(vitality, 1) || "mixed";
         stageEl.dataset.health = health;
         const caption = $("treeCaption");
         if (caption) {
           const stageKey =
             stageEl.dataset.stage != null
-              ? (
-                  window.NAFS_tree?.STAGE_RULES || []
-                ).find((rule) => String(rule.id) === stageEl.dataset.stage)?.key
+              ? (window.NAFS_tree?.STAGE_RULES || []).find(
+                  (rule) => String(rule.id) === stageEl.dataset.stage
+                )?.key
               : null;
           if (stageKey) {
             caption.textContent = `${t(stageKey)} · ${t(
