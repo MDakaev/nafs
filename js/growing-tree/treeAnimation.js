@@ -68,9 +68,7 @@
       this._onResize = () => this.resize();
       this._onVisibility = () => this._syncLoop();
       this._ro =
-        typeof ResizeObserver !== "undefined"
-          ? new ResizeObserver(() => this.resize())
-          : null;
+        typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => this.resize()) : null;
 
       if (this._ro) this._ro.observe(this.canvas.parentElement || this.canvas);
       else window.addEventListener("resize", this._onResize);
@@ -91,16 +89,8 @@
     }
 
     setHealth(vitality, poison, opts = {}) {
-      this.vitality = renderer().clamp(
-        vitality == null ? this.vitality : vitality,
-        0,
-        1
-      );
-      this.poison = renderer().clamp(
-        poison == null ? this.poison : poison,
-        0,
-        1
-      );
+      this.vitality = renderer().clamp(vitality == null ? this.vitality : vitality, 0, 1);
+      this.poison = renderer().clamp(poison == null ? this.poison : poison, 0, 1);
       if (opts.redraw === false) {
         this._needsDraw = true;
         return;
@@ -189,15 +179,7 @@
       this._palette = { ...api.DEFAULT_COLORS, ...(this.colors || {}) };
 
       // Sky sun — dims + gathers clouds as Nafs/poison rises.
-      api.drawSun(
-        ctx,
-        w,
-        h,
-        this._time,
-        this.vitality,
-        this.progress,
-        this.poison
-      );
+      api.drawSun(ctx, w, h, this._time, this.vitality, this.progress, this.poison);
 
       ctx.save();
       ctx.translate(w / 2, groundY);

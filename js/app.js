@@ -56,7 +56,8 @@
     state.motivation = Math.floor(Math.random() * motivations().length);
   }
 
-  /** Localhost-only: seed history so tree stages can be previewed via ?demoTree=1 */
+  /** Localhost-only: seed history so tree stages can be previewed via ?demoTree=1.
+   *  Replaces local day history while the query param is present (demo only). */
   function maybeSeedDemoTree() {
     const host = location.hostname;
     const local = host === "localhost" || host === "127.0.0.1";
@@ -156,6 +157,7 @@
   function renderSpeechItem(item, animate = false, opts = {}) {
     const title = item[0] || "";
     const body = item[1] || "";
+    // Optional Arabic original for dhikr / Allah mentions (item[2]).
     const arabic = item[2] || "";
     const speech = $("speech");
     const arabicEl = speech.querySelector(".arabic");

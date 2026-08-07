@@ -120,7 +120,9 @@
         const n = Number(params.get("treeStage"));
         if (Number.isInteger(n) && n >= 0 && n <= 6) {
           stage = STAGE_RULES.find((rule) => rule.id === n) || stage;
-          progress = GROWTH_MARKS.find((mark) => mark.day === (STAGE_RULES[n]?.minDay || 0))?.progress;
+          progress = GROWTH_MARKS.find(
+            (mark) => mark.day === (STAGE_RULES[n]?.minDay || 0)
+          )?.progress;
           if (progress == null) {
             const map = [0.01, 0.08, 0.2, 0.32, 0.52, 0.74, 1];
             progress = map[n] ?? progress;
@@ -144,8 +146,7 @@
       }
     }
 
-    const health =
-      total > 0 ? healthFromVitality(vitality, total) : "dormant";
+    const health = total > 0 ? healthFromVitality(vitality, total) : "dormant";
     const seed = hashSeed(firstKey || DEFAULT_SEED_TEXT);
 
     return {
@@ -170,8 +171,7 @@
 
   function prefersReducedMotion() {
     return (
-      typeof matchMedia === "function" &&
-      matchMedia("(prefers-reduced-motion: reduce)").matches
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches
     );
   }
 

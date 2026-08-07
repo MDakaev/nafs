@@ -288,6 +288,7 @@ button {
 .speech.is-dhikr .arabic {
   display: none;
 }
+/* Calligraphy line above transliteration when motivation/dhikr includes Arabic. */
 .speech.has-arabic-line .arabic {
   display: block;
   margin-bottom: 2px;
