@@ -5,9 +5,11 @@
   "description": "Nafs PWA — small victories over the self",
   "scripts": {
     "format": "prettier --write \"**/*.{html,js,css,md,json,webmanifest}\"",
-    "format:check": "prettier --check \"**/*.{html,js,css,md,json,webmanifest}\""
+    "format:check": "prettier --check \"**/*.{html,js,css,md,json,webmanifest}\"",
+    "smoke:viewports": "node scripts/smoke-viewports.mjs"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
     "prettier": "^3.9.6"
   }
 }
