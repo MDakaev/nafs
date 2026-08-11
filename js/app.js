@@ -39,7 +39,22 @@
     motivation: 0,
     resetPeriod: "day",
     treeFocus: false,
+    deedTemplates: [],
   };
+
+  const BUILTIN_DEEDS = [
+    { id: "good_fajr", side: "me", builtin: true },
+    { id: "good_adhkar", side: "me", builtin: true },
+    { id: "good_tongue", side: "me", builtin: true },
+    { id: "good_gaze", side: "me", builtin: true },
+    { id: "good_dhikr", side: "me", builtin: true },
+    { id: "bad_missed_fajr", side: "nafs", builtin: true },
+    { id: "bad_waste", side: "nafs", builtin: true },
+    { id: "bad_lied", side: "nafs", builtin: true },
+    { id: "bad_rude", side: "nafs", builtin: true },
+    { id: "bad_ghiba", side: "nafs", builtin: true },
+    { id: "bad_gaze", side: "nafs", builtin: true },
+  ];
 
   let state;
   try {
@@ -51,6 +66,7 @@
   state.lang = state.lang === "en" ? "en" : "ru";
   // Never restore tree-focus across reloads — it can leave the home grid collapsed.
   state.treeFocus = false;
+  ensureDeedTemplates();
   let treeDebugOverride = false;
   if (!Number.isInteger(state.motivation)) {
     state.motivation = Math.floor(Math.random() * motivations().length);
@@ -86,8 +102,28 @@
 
   function today() {
     const key = dayKey();
-    state.days[key] ||= { me: 0, nafs: 0 };
+    state.days[key] ||= { me: 0, nafs: 0, deeds: {} };
+    state.days[key].deeds ||= {};
     return state.days[key];
+  }
+
+  /** Seed builtin deed templates in order; keep user customs. */
+  function ensureDeedTemplates() {
+    if (!Array.isArray(state.deedTemplates)) state.deedTemplates = [];
+    const customs = state.deedTemplates.filter((d) => d && d.builtin === false);
+    const next = [...BUILTIN_DEEDS.map((d) => ({ ...d })), ...customs];
+    const prev = JSON.stringify(state.deedTemplates);
+    const now = JSON.stringify(next);
+    if (prev !== now) {
+      state.deedTemplates = next;
+      save();
+    }
+  }
+
+  function deedLabel(tpl) {
+    if (!tpl) return "";
+    if (tpl.builtin) return t(`deed_${tpl.id}`);
+    return String(tpl.label || "").trim();
   }
 
   /** Russian/English-ish plural helper for mark counts. */
@@ -137,6 +173,7 @@
     } else {
       renderSpeechItem(pack.nafs, true, { dhikr: true });
     }
+    scheduleSpeechRotate();
   }
 
   /** Apply static translated strings marked with data-i18n. */
@@ -148,6 +185,9 @@
     });
     document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
       el.setAttribute("aria-label", t(el.dataset.i18nAria));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+      el.setAttribute("placeholder", t(el.dataset.i18nPlaceholder));
     });
     document.querySelectorAll("[data-lang-choice]").forEach((btn) => {
       btn.classList.toggle("selected", btn.dataset.langChoice === state.lang);
@@ -187,6 +227,33 @@
     renderSpeechItem(list[state.motivation % list.length], animate, { dhikr: false });
   }
 
+  const SPEECH_ROTATE_MS = 5000;
+  let speechRotateTimer = null;
+
+  function canRotateSpeech() {
+    if (document.hidden) return false;
+    if (guideActive) return false;
+    if (!$("homePage")?.classList.contains("active")) return false;
+    return motivations().length > 1;
+  }
+
+  function stopSpeechRotate() {
+    clearTimeout(speechRotateTimer);
+    speechRotateTimer = null;
+  }
+
+  function scheduleSpeechRotate() {
+    stopSpeechRotate();
+    if (!canRotateSpeech()) return;
+    speechRotateTimer = setTimeout(() => {
+      if (!canRotateSpeech()) {
+        scheduleSpeechRotate();
+        return;
+      }
+      nextSpeech();
+    }, SPEECH_ROTATE_MS);
+  }
+
   function nextSpeech() {
     const list = motivations();
     let next;
@@ -196,6 +263,7 @@
     state.motivation = next;
     save();
     renderSpeech(true);
+    scheduleSpeechRotate();
   }
 
   const healthCaption = {
@@ -405,14 +473,37 @@
     const card = $("balanceCard");
     card.style.setProperty("--balance-start", `rgb(${start.join(",")})`);
     card.style.setProperty("--balance-end", `rgb(${end.join(",")})`);
+    renderDeedsWidget();
     renderTree();
   }
 
-  function mark(side) {
+  function renderDeedsWidget() {
+    const hint = $("deedsWidgetHint");
+    const countEl = $("deedsWidgetCount");
+    if (!hint || !countEl) return;
+    const templates = Array.isArray(state.deedTemplates) ? state.deedTemplates : [];
+    const total = templates.length;
+    const doneMap = today().deeds || {};
+    const done = templates.reduce((sum, tpl) => sum + (doneMap[tpl.id] ? 1 : 0), 0);
+    if (!total || done === 0) {
+      hint.textContent = t("deedsWidgetHintEmpty");
+      countEl.hidden = true;
+      countEl.textContent = "";
+      return;
+    }
+    hint.textContent = t("deedsWidgetHintProgress");
+    countEl.hidden = false;
+    countEl.textContent = `${done}/${total}`;
+  }
+
+  function mark(side, opts = {}) {
     const key = dayKey();
     const current = today();
     current[side] += 1;
-    state.last = { key, side };
+    if (opts.deedId) {
+      current.deeds[opts.deedId] = true;
+    }
+    state.last = { key, side, deedId: opts.deedId || null };
     save();
     renderHome();
     $("delta").classList.remove("pop");
@@ -420,17 +511,130 @@
     $("delta").classList.add("pop");
     if (state.settings.haptic) navigator.vibrate?.(12);
     showMarkDhikr(side);
-    analytics().track(side === "me" ? "mark_me" : "mark_nafs", { side });
+    analytics().track(side === "me" ? "mark_me" : "mark_nafs", {
+      side,
+      source: opts.deedId ? "deed" : "home",
+      deedId: opts.deedId || undefined,
+    });
+  }
+
+  function unmarkDeed(side, deedId) {
+    const key = dayKey();
+    const current = today();
+    if (current[side] > 0) current[side] -= 1;
+    if (current.deeds) delete current.deeds[deedId];
+    if (state.last?.deedId === deedId) state.last = null;
+    save();
+    renderHome();
+    if (state.settings.haptic) navigator.vibrate?.(8);
+    analytics().track("deed_uncheck", { side, deedId });
+  }
+
+  function toggleDeed(deedId) {
+    const tpl = state.deedTemplates.find((d) => d.id === deedId);
+    if (!tpl || (tpl.side !== "me" && tpl.side !== "nafs")) return;
+    const current = today();
+    if (current.deeds[deedId]) {
+      unmarkDeed(tpl.side, deedId);
+    } else {
+      mark(tpl.side, { deedId });
+    }
+    renderDeeds();
+  }
+
+  function addCustomDeed(side, rawLabel) {
+    if (side !== "me" && side !== "nafs") return;
+    const text = String(rawLabel || "")
+      .trim()
+      .replace(/\s+/g, " ");
+    if (!text) {
+      showToast(t("toastDeedEmpty"));
+      return false;
+    }
+    if (text.length > 60) {
+      showToast(t("toastDeedLong"));
+      return false;
+    }
+    const exists = state.deedTemplates.some((d) => {
+      if (d.side !== side) return false;
+      return deedLabel(d).toLowerCase() === text.toLowerCase();
+    });
+    if (exists) {
+      showToast(t("toastDeedDup"));
+      return false;
+    }
+    state.deedTemplates.push({
+      id: `c_${Date.now().toString(36)}`,
+      side,
+      builtin: false,
+      label: text,
+    });
+    save();
+    renderDeeds();
+    analytics().track("deed_add", { side });
+    return true;
+  }
+
+  function deleteCustomDeed(deedId) {
+    const tpl = state.deedTemplates.find((d) => d.id === deedId);
+    if (!tpl || tpl.builtin) return;
+    const current = today();
+    if (current.deeds?.[deedId]) {
+      unmarkDeed(tpl.side, deedId);
+    }
+    state.deedTemplates = state.deedTemplates.filter((d) => d.id !== deedId);
+    save();
+    renderDeeds();
+    analytics().track("deed_delete", { side: tpl.side });
+  }
+
+  function renderDeedRow(tpl, done) {
+    const label = deedLabel(tpl);
+    const deleteBtn = tpl.builtin
+      ? ""
+      : `<button type="button" class="deed-delete" data-deed-delete="${tpl.id}" aria-label="${t("deedsDelete")}">×</button>`;
+    return `<div class="deed-item${done ? " is-done" : ""}">
+      <button type="button" class="deed-row" data-deed-toggle="${tpl.id}" aria-pressed="${done ? "true" : "false"}">
+        <span class="deed-check" aria-hidden="true">✓</span>
+        <span class="deed-label">${escapeHtml(label)}</span>
+      </button>
+      ${deleteBtn || `<span class="deed-spacer" aria-hidden="true"></span>`}
+    </div>`;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderDeeds() {
+    const goodList = $("deedsGoodList");
+    const badList = $("deedsBadList");
+    if (!goodList || !badList) return;
+    const done = today().deeds || {};
+    const good = state.deedTemplates.filter((d) => d.side === "me");
+    const bad = state.deedTemplates.filter((d) => d.side === "nafs");
+    goodList.innerHTML = good.map((tpl) => renderDeedRow(tpl, Boolean(done[tpl.id]))).join("");
+    badList.innerHTML = bad.map((tpl) => renderDeedRow(tpl, Boolean(done[tpl.id]))).join("");
   }
 
   function undo() {
     if (!state.last) return showToast(t("toastUndoEmpty"));
-    const { key, side } = state.last;
+    const { key, side, deedId } = state.last;
     if (state.days[key]?.[side] > 0) state.days[key][side] -= 1;
+    if (deedId && state.days[key]?.deeds) {
+      delete state.days[key].deeds[deedId];
+    }
     state.last = null;
     save();
     renderHome();
     renderSpeech();
+    if (document.querySelector("#deedsPage")?.classList.contains("active")) {
+      renderDeeds();
+    }
     showToast(t("toastUndo"));
   }
 
@@ -560,8 +764,14 @@
       const activePeriod = document.querySelector(".period.active");
       renderHistory(activePeriod?.dataset.period || "day");
     }
+    if (name === "deeds") {
+      renderDeeds();
+    }
     if (name === "home") {
       window.NAFS_tree?.getGrowing?.()?.resume?.();
+      scheduleSpeechRotate();
+    } else {
+      stopSpeechRotate();
     }
   }
 
@@ -716,6 +926,7 @@
     }
     window.removeEventListener("resize", positionGuideStep);
     window.removeEventListener("orientationchange", positionGuideStep);
+    scheduleSpeechRotate();
   }
 
   function showGuideStep(index) {
@@ -739,6 +950,7 @@
     const overlay = $("guideOverlay");
     if (!overlay) return;
     guideActive = true;
+    stopSpeechRotate();
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
     window.addEventListener("resize", positionGuideStep);
@@ -910,6 +1122,9 @@
     if (document.querySelector("#historyPage")?.classList.contains("active")) {
       renderHistory(document.querySelector(".period.active")?.dataset.period || "day");
     }
+    if (document.querySelector("#deedsPage")?.classList.contains("active")) {
+      renderDeeds();
+    }
     updateInstallVisibility();
     document.querySelectorAll("[data-reset-period]").forEach((b) => {
       b.classList.toggle("selected", b.dataset.resetPeriod === (state.resetPeriod || "day"));
@@ -936,9 +1151,9 @@
   document.querySelectorAll("[data-menu]").forEach((b) => {
     b.addEventListener("click", () => {
       const action = b.dataset.menu;
-      if (action === "history") {
+      if (action === "history" || action === "deeds") {
         closeLayers();
-        openPage("history");
+        openPage(action);
       } else {
         openSheet(`${action}Sheet`);
       }
@@ -972,6 +1187,30 @@
   $("closeMenu").addEventListener("click", closeLayers);
   $("scrim").addEventListener("click", closeLayers);
   $("backHome").addEventListener("click", () => openPage("home"));
+  $("backDeeds")?.addEventListener("click", () => openPage("home"));
+  $("openDeeds")?.addEventListener("click", () => {
+    analytics().track("deeds_open", { source: "home_widget" });
+    openPage("deeds");
+  });
+  $("deedsPage")?.addEventListener("click", (event) => {
+    const del = event.target.closest("[data-deed-delete]");
+    if (del) {
+      event.preventDefault();
+      deleteCustomDeed(del.dataset.deedDelete);
+      return;
+    }
+    const row = event.target.closest("[data-deed-toggle]");
+    if (row) toggleDeed(row.dataset.deedToggle);
+  });
+  document.querySelectorAll("form.deeds-add").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const side = form.dataset.deedSide;
+      const input = form.querySelector("input");
+      if (!input) return;
+      if (addCustomDeed(side, input.value)) input.value = "";
+    });
+  });
   $("speech").addEventListener("click", nextSpeech);
   $("speech").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -996,6 +1235,10 @@
     startGuide();
   });
   $("undo").addEventListener("click", undo);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopSpeechRotate();
+    else scheduleSpeechRotate();
+  });
   document.querySelectorAll("[data-reset-period]").forEach((b) => {
     b.addEventListener("click", () => {
       state.resetPeriod = b.dataset.resetPeriod;
@@ -1217,6 +1460,7 @@
       });
       analytics().params({ lang: state.lang, theme: state.theme });
       analytics().hit();
+      scheduleSpeechRotate();
       if (!isGuideSeen()) {
         setTimeout(() => {
           if (!isGuideSeen() && !guideActive) startGuide();

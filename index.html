@@ -176,6 +176,24 @@
             </div>
           </section>
 
+          <button
+            type="button"
+            class="deeds-widget"
+            id="openDeeds"
+            data-i18n-aria="deedsWidgetOpen"
+            aria-label="Open deeds checklist"
+          >
+            <span class="deeds-widget-icon" aria-hidden="true">✓</span>
+            <span class="deeds-widget-copy">
+              <b data-i18n="deedsWidgetTitle">Deeds</b>
+              <small id="deedsWidgetHint" data-i18n="deedsWidgetHintEmpty"
+                >Mark today's deeds</small
+              >
+            </span>
+            <span class="deeds-widget-count" id="deedsWidgetCount" hidden>0/0</span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+
           <p class="question" data-i18n="prompt">Who steered this time?</p>
           <div class="actions">
             <button class="action me" data-mark="me">
@@ -233,6 +251,60 @@
         <div class="history-note" id="historyNote"></div>
       </section>
 
+      <!-- DEEDS -->
+      <section class="page" id="deedsPage">
+        <header class="topbar">
+          <button class="icon-button back" id="backDeeds" data-i18n-aria="back" aria-label="Back">
+            ←
+          </button>
+          <div class="brand" data-i18n="deeds">Deeds</div>
+          <div></div>
+        </header>
+        <div class="history-head">
+          <span class="overline" data-i18n="deedsOverline">What you did</span>
+          <h2 data-i18n="deedsTitle">Today</h2>
+        </div>
+        <p class="deeds-lead" data-i18n="deedsLead">
+          Name the deed. A check adds Iman or Nafs for today — calmly, without shame.
+        </p>
+
+        <section class="deeds-section" aria-labelledby="deedsGoodHeading">
+          <h3 id="deedsGoodHeading" data-i18n="deedsGood">Good</h3>
+          <div class="deeds-list" id="deedsGoodList"></div>
+          <form class="deeds-add" data-deed-side="me" autocomplete="off">
+            <label class="visually-hidden" for="deedAddGood" data-i18n="deedsAddGoodLabel"
+              >Add a good deed</label
+            >
+            <input
+              id="deedAddGood"
+              type="text"
+              maxlength="60"
+              data-i18n-placeholder="deedsAddPlaceholder"
+              placeholder="Your template"
+            />
+            <button type="submit" data-i18n="deedsAdd">Add</button>
+          </form>
+        </section>
+
+        <section class="deeds-section" aria-labelledby="deedsBadHeading">
+          <h3 id="deedsBadHeading" data-i18n="deedsBad">Honest</h3>
+          <div class="deeds-list" id="deedsBadList"></div>
+          <form class="deeds-add" data-deed-side="nafs" autocomplete="off">
+            <label class="visually-hidden" for="deedAddBad" data-i18n="deedsAddBadLabel"
+              >Add an honest deed</label
+            >
+            <input
+              id="deedAddBad"
+              type="text"
+              maxlength="60"
+              data-i18n-placeholder="deedsAddPlaceholder"
+              placeholder="Your template"
+            />
+            <button type="submit" data-i18n="deedsAdd">Add</button>
+          </form>
+        </section>
+      </section>
+
       <div class="scrim" id="scrim"></div>
       <aside class="drawer" id="drawer" aria-label="Menu">
         <div class="drawer-top">
@@ -248,6 +320,14 @@
             <span
               ><b data-i18n="menuHistory">History</b
               ><small data-i18n="menuHistoryHint">day, week, month, year</small></span
+            >
+            <span class="chevron">›</span>
+          </button>
+          <button class="menu-item" data-menu="deeds">
+            <span class="menu-icon">✓</span>
+            <span
+              ><b data-i18n="menuDeeds">Deeds</b
+              ><small data-i18n="menuDeedsHint">good and bad, for today</small></span
             >
             <span class="chevron">›</span>
           </button>
