@@ -815,9 +815,10 @@
     { target: "#speech", titleKey: "guide1Title", bodyKey: "guide1Body", radius: 18 },
     { target: ".actions", titleKey: "guide2Title", bodyKey: "guide2Body", radius: 18 },
     { target: "#balanceCard", titleKey: "guide3Title", bodyKey: "guide3Body", radius: 20 },
-    { target: "#treeStage", titleKey: "guide4Title", bodyKey: "guide4Body", radius: 22 },
-    { target: "#openMenu", titleKey: "guide5Title", bodyKey: "guide5Body", radius: 14 },
-    { target: null, titleKey: "guide6Title", bodyKey: "guide6Body" },
+    { target: "#openDeeds", titleKey: "guide4Title", bodyKey: "guide4Body", radius: 16 },
+    { target: "#treeStage", titleKey: "guide5Title", bodyKey: "guide5Body", radius: 22 },
+    { target: "#openMenu", titleKey: "guide6Title", bodyKey: "guide6Body", radius: 14 },
+    { target: null, titleKey: "guide7Title", bodyKey: "guide7Body" },
   ];
 
   let guideStep = -1;

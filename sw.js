@@ -3,7 +3,7 @@
  * HTML/JS: network-first (so label/copy updates show on refresh).
  * Icons/manifest: cache-first with background refresh.
  */
-const CACHE = "nafs-v23";
+const CACHE = "nafs-v25";
 const PRECACHE = [
   "./index.html",
   "./styles.css",
@@ -29,6 +29,7 @@ function isShellRequest(request) {
   if (url.origin !== self.location.origin) return false;
   return (
     url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".css") ||
     url.pathname.endsWith(".js") ||
     url.pathname.endsWith("/") ||
     url.pathname.endsWith("/nafs")

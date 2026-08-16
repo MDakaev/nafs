@@ -15,7 +15,15 @@ const viewports = [
   { name: "short height", width: 390, height: 600 },
 ];
 
-const criticalIds = ["speech", "speechTitle", "treeStage", "balanceCard", "homePage", "openMenu"];
+const criticalIds = [
+  "speech",
+  "speechTitle",
+  "treeStage",
+  "balanceCard",
+  "openDeeds",
+  "homePage",
+  "openMenu",
+];
 
 function overlaps(a, b) {
   return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
@@ -91,6 +99,8 @@ for (const vp of viewports) {
     const balance = report.boxes.balanceCard;
     if (speech && tree && overlaps(speech, tree)) errors.push("speech overlaps tree");
     if (tree && balance && overlaps(tree, balance)) errors.push("tree overlaps balance");
+    const deeds = report.boxes.openDeeds;
+    if (balance && deeds && overlaps(balance, deeds)) errors.push("balance overlaps deeds");
 
     const minActionH = vp.height <= 480 ? 64 : 70;
     for (const a of report.actions || []) {
@@ -102,7 +112,7 @@ for (const vp of viewports) {
     if (vp.height <= 600 && report.actions?.some((a) => a.h < minActionH)) {
       errors.push("short-screen action height regression");
     }
-    if (report.boxes.speechTitle && report.boxes.speechTitle.height < 8) {
+    if (report.boxes.speechTitle && report.boxes.speechTitle.height < 16) {
       errors.push("speech title collapsed");
     }
 
